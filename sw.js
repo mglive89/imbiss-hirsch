@@ -1,6 +1,6 @@
 // Imbiss Hirsch – offline cache. Bump VERSION after changing files.
-const VERSION = "ih-app-v3";
-const CORE = ["./", "index.html", "personal.html", "kueche.html", "kueche.webmanifest", "app.css", "config.js", "fallback-menu.js", "img/cover.jpg",
+const VERSION = "ih-app-v4";
+const CORE = ["./", "index.html", "personal.html", "kueche.html", "kueche.webmanifest", "app.css", "config.js", "fallback-menu.js", "img/cover.jpg", "img/logo.jpg",
   "manifest.webmanifest", "personal.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png", "icons/favicon-64.png"];
 

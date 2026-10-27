@@ -59,6 +59,9 @@ h2.view{font-family:var(--label);font-weight:700;font-size:26px;text-transform:u
 h2.view .sp{flex:1}
 
 /* auth */
+.logo-auth{display:block;width:100%;height:auto;margin:0 auto 6px}
+.logo-top{height:40px;width:auto;vertical-align:middle}
+.brand h1{display:flex;align-items:center;gap:4px}
 .auth{max-width:380px;margin:48px auto;display:flex;flex-direction:column;gap:14px}
 .auth .mark{font-family:var(--display);font-size:44px;line-height:.95;margin:0}
 .auth p{color:var(--muted);margin:0}
@@ -194,7 +197,7 @@ h2.view .sp{flex:1}
 <body>
 
 <div id="authView" class="auth" hidden>
-  <h1 class="mark">Imbiss<br>Hirsch</h1>
+  <img class="logo-auth" src="img/logo.jpg" width="846" height="490" alt="Imbiss Hirsch seit 1975">
   <p id="authMsg">Personal-Bereich: Bestellungen, Speisekarte und Übersicht.</p>
   <div class="field"><label for="aEmail">E-Mail</label><input id="aEmail" type="email" autocomplete="username"></div>
   <div class="field"><label for="aPass">Passwort</label><input id="aPass" type="password" autocomplete="current-password" minlength="8"></div>
@@ -215,7 +218,7 @@ h2.view .sp{flex:1}
   <div class="top">
     <div class="top-in">
       <div class="brand">
-        <h1>Hirsch <small>Personal</small></h1>
+        <h1><img class="logo-top" src="img/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><small>Personal</small></h1>
         <span class="sp"></span>
         <button class="btn" id="soundBtn" type="button" aria-pressed="false">Ton aus</button>
         <span class="who" id="who"></span>

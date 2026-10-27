@@ -59,6 +59,9 @@ body{font-size:18px;display:flex;flex-direction:column}
 .ready span{flex:1;font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ready button{background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--muted);padding:4px 8px;cursor:pointer;font-family:var(--label);font-weight:600}
 .empty{grid-column:1/-1;text-align:center;color:var(--faint);padding:60px 10px;font-family:var(--label);font-size:26px;text-transform:uppercase;letter-spacing:.06em}
+.logo-auth{display:block;width:100%;height:auto;margin:0 auto 6px}
+.logo-top{height:46px;width:auto;vertical-align:middle}
+.kbar h1{display:flex;align-items:center;gap:4px}
 .auth{max-width:380px;margin:48px auto;display:flex;flex-direction:column;gap:14px}
 .auth .mark{font-family:var(--display);font-size:44px;line-height:.95;margin:0}
 .auth p{color:var(--muted);margin:0}
@@ -68,7 +71,7 @@ body{font-size:18px;display:flex;flex-direction:column}
 <body>
 
 <div id="authView" class="auth" hidden>
-  <h1 class="mark">Hirsch<br>Küche</h1>
+  <img class="logo-auth" src="img/logo.jpg" width="846" height="490" alt="Imbiss Hirsch seit 1975">
   <p id="authMsg">Mit dem Personal-Konto anmelden.</p>
   <div class="field"><label for="aEmail">E-Mail</label><input id="aEmail" type="email" autocomplete="username"></div>
   <div class="field"><label for="aPass">Passwort</label><input id="aPass" type="password" autocomplete="current-password"></div>
@@ -78,7 +81,7 @@ body{font-size:18px;display:flex;flex-direction:column}
 
 <div id="appView" hidden style="display:contents">
   <header class="kbar">
-    <h1>Hirsch <small>Küche</small></h1>
+    <h1><img class="logo-top" src="img/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><small>Küche</small></h1>
     <span class="conn" id="conn" title="Verbindung"></span>
     <span class="count">In Arbeit <b id="cntQ">0</b></span>
     <span class="count">Fertig <b id="cntR">0</b></span>
