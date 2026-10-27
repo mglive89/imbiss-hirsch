@@ -110,6 +110,13 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 .done{text-align:center;padding-block:10px 4px}
 .done .big{font-family:var(--display);font-size:56px;line-height:1;margin:6px 0}
 .steps{display:flex;justify-content:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.readyov{position:fixed;inset:0;z-index:70;background:rgba(13,12,11,.94);display:grid;place-items:center;padding:24px}
+.readybox{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;max-width:420px}
+.readybox .rt{font-family:var(--label);font-weight:700;font-size:44px;text-transform:uppercase;letter-spacing:.06em;color:var(--ok)}
+.readybox .rn{font-family:var(--display);font-size:96px;line-height:1}
+.readybox p{font-family:var(--label);font-weight:600;font-size:22px;text-transform:uppercase;margin:0}
+@media (prefers-reduced-motion:no-preference){.readyov:not([hidden]) .rn{animation:readyPulse 1s ease-in-out infinite}}
+@keyframes readyPulse{50%{transform:scale(1.08);color:var(--kraft)}}
 .track{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:25;padding:6px 14px;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.5);cursor:pointer}
 </style>
 </head>
@@ -171,9 +178,19 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
   <div class="sheet-in" id="sheetBody"></div>
 </div>
 
+<div class="readyov" id="readyOv" role="alertdialog" aria-labelledby="readyTitle" hidden>
+  <div class="readybox">
+    <div class="rt" id="readyTitle"></div>
+    <div class="rn num" id="readyNo"></div>
+    <p id="readyTx"></p>
+    <button type="button" class="btn big primary" id="readyOk"></button>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="appfeel.js"></script>
 <script src="config.js"></script>
 <script src="fallback-menu.js"></script>
 <script>
@@ -227,6 +244,20 @@ const T = {
   needAddr:["Bitte Name, Telefon und Adresse angeben.","Please enter name, phone and address.","Inserisci nome, telefono e indirizzo.","Lütfen isim, telefon ve adres girin.","Indiquez nom, téléphone et adresse."],
   thanks:  ["Danke! Deine Bestellung","Thank you! Your order","Grazie! Il tuo ordine","Teşekkürler! Siparişiniz","Merci ! Votre commande"],
   keepOpen:["Lass diese Seite offen, hier siehst du den Status.","Keep this page open to follow the status.","Tieni aperta questa pagina per vedere lo stato.","Durumu görmek için bu sayfayı açık tutun.","Gardez cette page ouverte pour suivre le statut."],
+  payHow:  ["Bezahlung","Payment","Pagamento","Ödeme","Paiement"],
+  payOnline:["Karte / PayPal","Card / PayPal","Carta / PayPal","Kart / PayPal","Carte / PayPal"],
+  payCash: ["Bar an der Kasse","Cash at the counter","Contanti alla cassa","Kasada nakit","Espèces au comptoir"],
+  payCashDeliv:["Bar bei Lieferung","Cash on delivery","Contanti alla consegna","Teslimatta nakit","Espèces à la livraison"],
+  payOnlineHint:["Sicher bezahlen mit Karte, PayPal, Apple Pay oder Google Pay. Danach geht die Bestellung direkt in die Küche.","Pay securely by card, PayPal, Apple Pay or Google Pay. Your order then goes straight to the kitchen.","Paga in sicurezza con carta, PayPal, Apple Pay o Google Pay. Poi l'ordine va subito in cucina.","Kart, PayPal, Apple Pay veya Google Pay ile güvenle ödeyin. Sipariş hemen mutfağa gider.","Payez par carte, PayPal, Apple Pay ou Google Pay. La commande part ensuite directement en cuisine."],
+  toPay:   ["Weiter zur Zahlung","Continue to payment","Vai al pagamento","Ödemeye geç","Continuer vers le paiement"],
+  payNow:  ["Jetzt online bezahlen","Pay online now","Paga ora online","Şimdi online öde","Payer en ligne"],
+  orCounter:["Oder einfach an der Kasse bezahlen.","Or just pay at the counter.","Oppure paga semplicemente alla cassa.","Ya da kasada ödeyin.","Ou payez simplement au comptoir."],
+  payCancel:["Zahlung abgebrochen. Versuch es nochmal oder bezahl an der Kasse.","Payment cancelled. Try again or pay at the counter.","Pagamento annullato. Riprova o paga alla cassa.","Ödeme iptal edildi. Tekrar deneyin veya kasada ödeyin.","Paiement annulé. Réessayez ou payez au comptoir."],
+  payWait: ["Zahlung wird bestätigt …","Confirming payment …","Conferma del pagamento …","Ödeme onaylanıyor …","Confirmation du paiement …"],
+  soundOn: ["Ton aktivieren – wir klingeln, wenn's fertig ist","Turn on sound – we'll ring when it's ready","Attiva il suono – suoniamo quando è pronto","Sesi aç – hazır olunca çalarız","Activer le son – on sonne quand c'est prêt"],
+  soundIsOn:["Ton an: Wir klingeln, wenn's fertig ist","Sound on: we'll ring when it's ready","Suono attivo: suoniamo quando è pronto","Ses açık: hazır olunca çalarız","Son activé : on sonne quand c'est prêt"],
+  readyTitle:["Fertig!","Ready!","Pronto!","Hazır!","Prête !"],
+  okComing:["OK, ich komme","OK, on my way","OK, arrivo","Tamam, geliyorum","OK, j'arrive"],
   payFirst:["Bitte an der Theke bezahlen – dann geht's in die Küche","Please pay at the counter – then it goes to the kitchen","Paga al banco – poi va in cucina","Lütfen kasada ödeyin – sonra mutfağa gider","Payez au comptoir – ensuite ça part en cuisine"],
   st_paid: ["Bezahlt · in der Küche","Paid · in the kitchen","Pagato · in cucina","Ödendi · mutfakta","Payée · en cuisine"],
   st_neu:  ["Eingegangen","Received","Ricevuto","Alındı","Reçue"],
@@ -269,6 +300,9 @@ let cart = {};            // id -> qty
 try { cart = JSON.parse(store.get("ih-cart") || "{}") || {}; } catch(e){ cart = {}; }
 const saveCart = () => store.set("ih-cart", JSON.stringify(cart));
 
+let onlinePay = false;           // Stripe set up? (asked once on start)
+let payChoice = store.get("ih-pay") || "online";
+const fnUrl = name => `${IH_CONFIG.url}/functions/v1/${name}`;
 const sb = (window.supabase && window.IH_CONFIG) ? window.supabase.createClient(IH_CONFIG.url, IH_CONFIG.key, {auth:{persistSession:false}}) : null;
 
 /* ---------- data ---------- */
@@ -415,9 +449,15 @@ function renderCart(errMsg){
     h += `<div class="field"><label for="fAddr">${esc(tr("address"))}</label><textarea id="fAddr" autocomplete="street-address" maxlength="200" rows="2">${esc(form.address)}</textarea></div>`;
   }
   h += `<div class="field"><label for="fNote">${esc(tr("note"))}</label><textarea id="fNote" maxlength="300" rows="2">${esc(form.note)}</textarea></div></div>`;
-  h += `<p class="hint">${esc(otype === "tisch" ? tr("payTable") : otype === "abholung" ? tr("payPick") : tr("payDeliv"))}</p>`;
+  const pc = onlinePay ? payChoice : "kasse";
+  if (onlinePay){
+    h += `<div class="field"><span class="lbl">${esc(tr("payHow"))}</span><div class="seg" id="payseg">
+      <button type="button" data-p="online" aria-pressed="${pc==="online"}">${esc(tr("payOnline"))}</button>
+      <button type="button" data-p="kasse" aria-pressed="${pc==="kasse"}">${esc(otype === "lieferung" ? tr("payCashDeliv") : tr("payCash"))}</button></div></div>`;
+  }
+  h += `<p class="hint">${esc(pc === "online" ? tr("payOnlineHint") : otype === "tisch" ? tr("payTable") : otype === "abholung" ? tr("payPick") : tr("payDeliv"))}</p>`;
   if (errMsg) h += `<p class="err" role="alert">${esc(errMsg)}</p>`;
-  h += `<button type="button" class="btn big primary" id="sendBtn">${esc(tr("send"))} · ${money(cartTotal())}</button>`;
+  h += `<button type="button" class="btn big primary" id="sendBtn">${esc(pc === "online" ? tr("toPay") : tr("send"))} · ${money(cartTotal())}</button>`;
   $("sheetBody").innerHTML = h;
   $("xBtn").onclick = closeSheet;
   $("sheetBody").querySelectorAll(".qty button").forEach(b => b.onclick = () => {
@@ -427,6 +467,7 @@ function renderCart(errMsg){
   });
   $("otype2").querySelectorAll("button").forEach(b => b.onclick = () => { captureForm(); setType(b.dataset.t); });
   $("sendBtn").onclick = submitOrder;
+  if ($("payseg")) $("payseg").querySelectorAll("button").forEach(b => b.onclick = () => { captureForm(); payChoice = b.dataset.p; store.set("ih-pay", payChoice); renderCart(); });
 }
 function captureForm(){
   if ($("fName")) form.name = $("fName").value;
@@ -441,6 +482,7 @@ async function submitOrder(){
   if (!lines.length) return renderCart();
   if (otype !== "tisch" && (!form.name.trim() || !form.phone.trim())) return renderCart(otype === "lieferung" ? tr("needAddr") : tr("needFields"));
   if (otype === "lieferung" && !form.address.trim()) return renderCart(tr("needAddr"));
+  if (window.IHSound) IHSound.unlock();   // the tap lets us ring later when the food is ready
   const btn = $("sendBtn"); btn.disabled = true; btn.textContent = tr("sending");
   const payload = {channel: otype, table_no: otype === "tisch" ? tableNo : null, lang,
     name: otype === "tisch" ? null : form.name, phone: otype === "tisch" ? null : form.phone,
@@ -454,22 +496,50 @@ async function submitOrder(){
     const mine = {id: data.id, token: data.token, channel: otype, at: Date.now()};
     store.set("ih-last-order", JSON.stringify(mine));
     renderMenu();
-    showOrder(mine);
+    if (onlinePay && payChoice === "online") await startCheckout(mine);
+    else showOrder(mine);
   }catch(e){
     renderCart(tr("orderFail") + (e && e.message ? " " + e.message : ""));
   }
 }
 
+/* ---------- online payment ---------- */
+async function checkOnlinePay(){
+  try{
+    const r = await fetch(fnUrl("create-checkout"), {headers:{apikey: IH_CONFIG.key}});
+    onlinePay = r.ok && (await r.json()).configured === true;
+  }catch(e){ onlinePay = false; }
+}
+async function startCheckout(o){
+  const ret = location.origin + location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "");
+  try{
+    const r = await fetch(fnUrl("create-checkout"), {method:"POST", headers:{"Content-Type":"application/json", apikey: IH_CONFIG.key},
+      body: JSON.stringify({id: o.id, token: o.token, return_url: ret, lang})});
+    const d = await r.json();
+    if (!r.ok || !d.url) throw new Error(d.error || "");
+    location.href = d.url;
+  }catch(e){
+    showOrder(o, tr("orderFail") + (e.message ? " " + e.message : ""));
+  }
+}
+
 /* ---------- order status ---------- */
-let pollTimer = null;
-function showOrder(o){
+let pollTimer = null, readyRepeat = null;
+function showOrder(o, msg){
   openSheet("order");
   $("sheetBody").innerHTML = `<h2 id="sheetTitle">${esc(tr("myOrder"))}<button type="button" class="x" id="xBtn" aria-label="${esc(tr("close"))}">×</button></h2>
     <div class="done"><div class="lbl">${esc(tr("thanks"))}</div><div class="big num">#${o.id}</div>
-    <div class="steps" id="steps"></div><p class="hint" style="margin-top:14px">${esc(tr("keepOpen"))}</p></div>
+    <div class="steps" id="steps"></div>${msg ? `<p class="err" style="margin-top:12px">${esc(msg)}</p>` : ""}
+    <div id="payArea"></div>
+    <p class="hint" style="margin-top:14px">${esc(tr("keepOpen"))}</p></div>
+    <button type="button" class="btn" id="soundBtn"></button>
     <button type="button" class="btn" id="againBtn">${esc(tr("newOrder"))}</button>`;
   $("xBtn").onclick = closeSheet;
   $("againBtn").onclick = () => { closeSheet(); $("bar").scrollIntoView(); };
+  const sbtn = $("soundBtn");
+  const paintSound = () => { const on = window.IHSound && IHSound.on; sbtn.textContent = on ? tr("soundIsOn") : tr("soundOn"); sbtn.classList.toggle("primary", !on); };
+  sbtn.onclick = () => { if (window.IHSound){ IHSound.unlock(); IHSound.received(); } paintSound(); };
+  paintSound();
   pollStatus(o);
 }
 async function pollStatus(o){
@@ -480,18 +550,41 @@ async function pollStatus(o){
     st = data && data.status; pay = (data && data.payment) || "offen";
   }catch(e){}
   if (st){
-    o.pay = pay;
+    const prev = o.lastSt; o.lastSt = st; o.pay = pay;
+    store.set("ih-last-order", JSON.stringify(o));
     renderTrack(o, st);
+    if (st === "fertig" && prev && prev !== "fertig") readyAlarm(o);
     const el = $("steps");
     if (el && sheetMode === "order"){
       const label = st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
-        : st === "neu" ? (pay === "offen" ? (o.channel === "lieferung" ? tr("st_neu") : tr("payFirst")) : tr("st_paid"))
+        : st === "neu" ? (pay === "offen" ? (o.justPaid ? tr("payWait") : o.channel === "lieferung" ? tr("st_neu") : tr("payFirst")) : tr("st_paid"))
         : tr("st_" + st);
       el.innerHTML = `<span class="pill ${st}" style="font-size:16px;padding:6px 14px">${esc(label)}</span>`;
+      const pa = $("payArea");
+      if (pa){
+        if (pay === "offen" && onlinePay && st !== "storniert" && !o.justPaid){
+          if (!pa.dataset.on){ pa.dataset.on = "1";
+            pa.innerHTML = `<button type="button" class="btn big primary" id="payNowBtn" style="margin-top:14px">${esc(tr("payNow"))}</button><p class="hint" style="margin-top:6px">${esc(tr("orCounter"))}</p>`;
+            $("payNowBtn").onclick = (e) => { e.currentTarget.disabled = true; startCheckout(o); };
+          }
+        } else { pa.innerHTML = ""; delete pa.dataset.on; }
+      }
     }
+    if (pay !== "offen") o.justPaid = false;
     if (st === "abgeschlossen" || st === "storniert"){ if (st === "abgeschlossen") store.del("ih-last-order"); return; }
   }
-  pollTimer = setTimeout(() => pollStatus(o), 8000);
+  pollTimer = setTimeout(() => pollStatus(o), 5000);
+}
+function readyAlarm(o){
+  if (window.IHSound) IHSound.ready();
+  let n = 0; clearInterval(readyRepeat);
+  readyRepeat = setInterval(() => { if (++n >= 3 || $("readyOv").hidden){ clearInterval(readyRepeat); return; } if (window.IHSound) IHSound.ready(); }, 12000);
+  $("readyNo").textContent = "#" + o.id;
+  $("readyTitle").textContent = tr("readyTitle");
+  $("readyTx").textContent = (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick")) + (o.channel === "tisch" && tableNo ? " · " + tr("table", {n: tableNo}) : "");
+  $("readyOk").textContent = tr("okComing");
+  $("readyOv").hidden = false;
+  try{ document.title = "● " + tr("readyTitle") + " #" + o.id; }catch(e){}
 }
 function renderTrack(o, st){
   const b = $("trackBtn");
@@ -535,6 +628,7 @@ function spy(){
 }
 addEventListener("scroll", spy, {passive:true});
 $("ctaMenu").onclick = () => $("bar").scrollIntoView();
+$("readyOk").onclick = () => { $("readyOv").hidden = true; clearInterval(readyRepeat); document.title = "Imbiss Hirsch"; };
 
 let installEvt = null;
 const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
@@ -568,9 +662,20 @@ addEventListener("hashchange", route);
   if (sb && online){
     sb.channel("menu").on("postgres_changes", {event:"*", schema:"public", table:"menu_items"}, async () => { await loadMenu(); route(); }).subscribe();
   }
+  await checkOnlinePay();
+  const back = params.get("bezahlt") || params.get("abbruch");
+  if (back){
+    const clean = location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "") + location.hash;
+    try{ history.replaceState(null, "", clean); }catch(e){}
+  }
   try{
     const last = JSON.parse(store.get("ih-last-order") || "null");
-    if (last && Date.now() - last.at < 6*3600e3 && sb) pollStatus(last); else store.del("ih-last-order");
+    if (last && Date.now() - last.at < 6*3600e3 && sb){
+      if (back && String(last.id) === back){
+        if (params.get("bezahlt")) last.justPaid = true;
+        showOrder(last, params.get("abbruch") ? tr("payCancel") : "");
+      } else pollStatus(last);
+    } else store.del("ih-last-order");
   }catch(e){}
 })();
 

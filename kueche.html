@@ -62,6 +62,10 @@ body{font-size:18px;display:flex;flex-direction:column}
 .logo-auth{display:block;width:100%;height:auto;margin:0 auto 6px}
 .logo-top{height:46px;width:auto;vertical-align:middle}
 .kbar h1{display:flex;align-items:center;gap:4px}
+.kstart{position:fixed;inset:0;z-index:50;background:rgba(13,12,11,.96);display:grid;place-items:center;text-align:center;padding:24px}
+.kstart div{display:flex;flex-direction:column;gap:16px;align-items:center;max-width:440px}
+.kstart img{width:min(100%,400px);height:auto}
+.kstart p{color:var(--muted);margin:0}
 .auth{max-width:380px;margin:48px auto;display:flex;flex-direction:column;gap:14px}
 .auth .mark{font-family:var(--display);font-size:44px;line-height:.95;margin:0}
 .auth p{color:var(--muted);margin:0}
@@ -100,9 +104,18 @@ body{font-size:18px;display:flex;flex-direction:column}
   </div>
 </div>
 
+<div class="kstart" id="kstart" hidden>
+  <div>
+    <img src="img/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <p>Antippen: Ton für neue Bestellungen an, Vollbild, Bildschirm bleibt an.</p>
+    <button class="btn big primary" type="button" id="kstartBtn">Küche starten</button>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="appfeel.js"></script>
 <script src="config.js"></script>
 <script>
 const sb = window.supabase.createClient(IH_CONFIG.url, IH_CONFIG.key);
@@ -121,6 +134,7 @@ async function boot(){
   const { data: staff } = await sb.from("staff").select("user_id").eq("user_id", session.user.id).maybeSingle();
   if (!staff){ show(false); $("authErr").textContent = "Dieses Konto ist noch nicht freigeschaltet."; $("authErr").hidden = false; await sb.auth.signOut(); return; }
   show(true);
+  if (!IHSound.on) $("kstart").hidden = false;
   await load();
   subscribe();
   wake();
@@ -164,7 +178,7 @@ function render(fresh = []){
   $("queue").innerHTML = queue.length ? queue.map(o => {
     const m = minsSince(o.paid_at || o.created_at), late = m >= 15;
     const items = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? `<em>${esc(i.note)}</em>` : ""}</span></li>`).join("");
-    const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung bei Lieferung" : ""].filter(Boolean).join(" · ");
+    const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung bei Lieferung" : o.payment === "online" ? "Online bezahlt" : ""].filter(Boolean).join(" · ");
     return `<article class="card ${o.status}${late ? " late" : ""}${fresh.includes(o.id) ? " fresh" : ""}">
       <div class="c-head"><span class="c-no">#${o.id}</span><span class="c-where">${where(o)}</span><span class="c-min">${m} min</span></div>
       ${sub ? `<div class="c-sub">${sub}</div>` : ""}
@@ -189,23 +203,22 @@ setInterval(() => { if (!$("appView").hidden) render(); }, 30000);
 /* ---------- clock, sound, fullscreen, wake lock ---------- */
 const clock = () => $("clock").textContent = new Intl.DateTimeFormat("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"}).format(new Date());
 clock(); setInterval(clock, 10000);
-let audio = null;
 $("soundBtn").onclick = () => {
-  if (audio){ audio.close(); audio = null; } else { try{ audio = new (window.AudioContext || window.webkitAudioContext)(); beep(); }catch(e){ audio = null; } }
-  $("soundBtn").setAttribute("aria-pressed", !!audio); $("soundBtn").textContent = audio ? "Ton an" : "Ton aus";
+  if (IHSound.on){ IHSound.off(); } else { IHSound.unlock(); IHSound.received(); }
+  $("soundBtn").setAttribute("aria-pressed", IHSound.on); $("soundBtn").textContent = IHSound.on ? "Ton an" : "Ton aus";
 };
-function beep(){
-  if (!audio) return;
-  const t = audio.currentTime;
-  [0,.2,.4].forEach((dt,k) => { const o = audio.createOscillator(), g = audio.createGain();
-    o.frequency.value = k === 2 ? 1320 : 880; g.gain.setValueAtTime(.0001,t+dt); g.gain.exponentialRampToValueAtTime(.45,t+dt+.02); g.gain.exponentialRampToValueAtTime(.0001,t+dt+.18);
-    o.connect(g).connect(audio.destination); o.start(t+dt); o.stop(t+dt+.2); });
-}
+const beep = () => IHSound.received();
 $("fsBtn").onclick = () => { const d = document; (d.fullscreenElement ? d.exitFullscreen() : d.documentElement.requestFullscreen?.())?.catch?.(() => {}); };
 let lock = null;
 async function wake(){ try{ if ("wakeLock" in navigator && !lock){ lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => lock = null); } }catch(e){} }
 
 if ("serviceWorker" in navigator && location.protocol === "https:") addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+$("kstartBtn").onclick = () => {
+  IHSound.unlock(); IHSound.received();
+  $("soundBtn").setAttribute("aria-pressed", true); $("soundBtn").textContent = "Ton an";
+  try{ document.documentElement.requestFullscreen?.().catch(() => {}); }catch(e){}
+  $("kstart").hidden = true; wake();
+};
 boot();
 </script>
 </body>

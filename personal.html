@@ -231,6 +231,7 @@ h2.view .sp{flex:1}
         <a class="tab" href="#uebersicht">Übersicht</a>
         <a class="tab" href="#qr">QR &amp; Team</a>
         <a class="tab" href="kueche.html" target="_blank" rel="noopener">Küche ↗</a>
+        <a class="tab" href="abholung.html" target="_blank" rel="noopener">Abhol-Anzeige ↗</a>
       </nav>
     </div>
   </div>
@@ -259,6 +260,7 @@ h2.view .sp{flex:1}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="appfeel.js"></script>
 <script src="config.js"></script>
 <script>
 const sb = window.supabase.createClient(IH_CONFIG.url, IH_CONFIG.key);
@@ -271,6 +273,7 @@ let me = null, staff = null;
 let cats = [], items = [];
 let orders = [];                 // today's orders with items
 const seen = new Set();
+const lastState = new Map();   // id -> {status, payment} to spot changes
 
 /* ---------- helpers ---------- */
 let toastT;
@@ -352,8 +355,21 @@ async function loadOrders(first){
     .or(`status.in.(neu,zubereitung,fertig),created_at.gte.${from}`)
     .order("created_at", {ascending:true}).limit(400);
   if (error){ toast("Bestellungen konnten nicht geladen werden", true); return; }
-  const fresh = [];
-  for (const o of data){ if (!seen.has(o.id)){ if (!first && o.status === "neu") fresh.push(o.id); seen.add(o.id); } }
+  const fresh = [], nowReady = [], paidOnline = [];
+  for (const o of data){
+    if (!seen.has(o.id)){ if (!first && o.status === "neu") fresh.push(o.id); seen.add(o.id); }
+    const before = lastState.get(o.id);
+    if (!first && before){
+      if (before.status !== "fertig" && o.status === "fertig") nowReady.push(o);
+      if (before.payment === "offen" && o.payment === "online") paidOnline.push(o);
+    }
+    lastState.set(o.id, {status: o.status, payment: o.payment});
+  }
+  if (nowReady.length){
+    IHSound.ready();
+    toast(nowReady.map(o => `#${o.id} ${o.channel === "tisch" ? "Tisch " + o.table_no : CH[o.channel]}`).join(", ") + " – fertig zur Ausgabe");
+  }
+  if (paidOnline.length) toast(paidOnline.map(o => "#" + o.id).join(", ") + " online bezahlt → Küche");
   orders = data;
   if (fresh.length) alertNew(fresh);
   if (current === "bestellungen") renderBoard(fresh);
@@ -372,22 +388,12 @@ function subscribe(){
 }
 
 /* ---------- sound ---------- */
-let audio = null;
 $("soundBtn").onclick = () => {
-  if (audio){ audio.close(); audio = null; } else { try{ audio = new (window.AudioContext || window.webkitAudioContext)(); beep(); }catch(e){ audio = null; } }
-  $("soundBtn").setAttribute("aria-pressed", !!audio);
-  $("soundBtn").textContent = audio ? "Ton an" : "Ton aus";
+  if (IHSound.on){ IHSound.off(); } else { IHSound.unlock(); IHSound.received(); }
+  $("soundBtn").setAttribute("aria-pressed", IHSound.on);
+  $("soundBtn").textContent = IHSound.on ? "Ton an" : "Ton aus";
 };
-function beep(){
-  if (!audio) return;
-  const t = audio.currentTime;
-  [0, .18, .36].forEach((dt, k) => {
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = "sine"; o.frequency.value = k === 2 ? 1320 : 880;
-    g.gain.setValueAtTime(0.0001, t+dt); g.gain.exponentialRampToValueAtTime(0.35, t+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+dt+0.16);
-    o.connect(g).connect(audio.destination); o.start(t+dt); o.stop(t+dt+0.18);
-  });
-}
+const beep = () => IHSound.received();
 let titleT;
 function alertNew(ids){
   beep();
@@ -415,7 +421,8 @@ function route(){
 addEventListener("hashchange", () => { if (staff) route(); });
 
 /* ========== 1. TILL BOARD: pay -> kitchen -> ready ========== */
-const PAY = {offen:"Offen", bar:"Bar bezahlt", karte:"Karte bezahlt", bei_lieferung:"Zahlung bei Lieferung"};
+const PAY = {offen:"Offen", bar:"Bar bezahlt", karte:"Karte bezahlt", bei_lieferung:"Zahlung bei Lieferung", online:"Online bezahlt"};
+const PM = {card:"Karte", paypal:"PayPal", apple_pay:"Apple Pay", google_pay:"Google Pay"};
 function ticket(o, fresh){
   const paid = o.payment !== "offen";
   const ref = paid && o.paid_at ? o.paid_at : o.created_at;
@@ -439,7 +446,7 @@ function ticket(o, fresh){
   return `<article class="ticket ${paid ? o.status : "neu"}${fresh ? " fresh" : ""}" data-id="${o.id}">
     <div class="t-head"><span class="t-no">#${o.id}</span><span class="t-where">${where(o)}</span>
       <span class="t-time${late ? " late" : ""}" title="eingegangen ${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(ref)} min</span></div>
-    <div class="t-meta">${meta.join(" · ")}${paid ? ` · <span class="pill fertig">${PAY[o.payment]}</span>` : ""}${paid && o.status === "zubereitung" ? ` <span class="pill zubereitung">Wird zubereitet</span>` : ""}</div>
+    <div class="t-meta">${meta.join(" · ")}${paid ? ` · <span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : ""}${paid && o.status === "zubereitung" ? ` <span class="pill zubereitung">Wird zubereitet</span>` : ""}</div>
     <ul class="t-items">${lines}</ul>
     ${o.note ? `<div class="t-note">${esc(o.note)}</div>` : ""}
     <div class="t-foot"><span class="sum">${eur(o.total)}</span>
@@ -475,7 +482,12 @@ function renderBoard(fresh){
     b.dataset.armed = "1"; b.textContent = "Wirklich zurück?"; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = "Zahlung zurück"; } }, 3500);
   });
   V.querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => {
-    if (b.dataset.armed){ setStatus(+b.dataset.cancel, "storniert"); return; }
+    if (b.dataset.armed){
+      const o = orders.find(x => x.id === +b.dataset.cancel);
+      setStatus(+b.dataset.cancel, "storniert");
+      if (o && o.payment === "online") toast("Online-Zahlung im Stripe-Dashboard erstatten", true);
+      return;
+    }
     b.dataset.armed = "1"; b.textContent = "Wirklich stornieren?"; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = "Storno"; } }, 3500);
   });
 }
@@ -681,7 +693,13 @@ async function renderStats(){
 async function renderQR(){
   const base = store.get("ih-base") || (location.origin + location.pathname.replace(/personal\.html$/, ""));
   const n = +(store.get("ih-tables") || 10);
-  let h = `<h2 class="view">QR-Codes für die Tische</h2>
+  let h = `<h2 class="view">Bildschirme</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <a class="btn" href="kueche.html" target="_blank" rel="noopener">Küchen-Display öffnen</a>
+      <a class="btn" href="abholung.html" target="_blank" rel="noopener">Abhol-Anzeige (Gastraum-TV) öffnen</a>
+    </div>
+    <p class="muted" style="margin-top:0">Die Abhol-Anzeige braucht kein Login: Sie zeigt nur Bestellnummern und Tischnummern, keine Namen.</p>
+    <h2 class="view" style="margin-top:32px">QR-Codes für die Tische</h2>
     <p class="muted" style="margin-top:0">Jeder Tisch bekommt seinen eigenen Code: Gäste sehen die Karte in ihrer Sprache und bestellen direkt an ihren Tisch. Zum Drucken: Screenshot machen, ca. 5 × 5 cm.</p>
     <div class="g2" style="max-width:640px"><div class="field"><label for="qBase">Adresse der Gäste-App</label><input id="qBase" type="url" value="${esc(base)}"></div>
     <div class="field"><label for="qN">Anzahl Tische</label><input id="qN" type="number" min="1" max="60" value="${n}"></div></div>

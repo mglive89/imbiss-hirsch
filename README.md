@@ -6,6 +6,7 @@ Zwei Apps, eine Datenbank (Supabase-Projekt `imbiss-hirsch`, Frankfurt):
 |---|---|---|
 | `index.html` | Gäste | Speisekarte in 5 Sprachen, Warenkorb, Bestellung am Tisch / Abholung / Lieferung, Status live |
 | `kueche.html` | Küche | Großes Display (Tablet/TV): nur **bezahlte** Bestellungen, älteste Zahlung zuerst, Start → Fertig, Ton, Vollbild |
+| `abholung.html` | Gastraum-TV | Abhol-Anzeige ohne Login: „In Zubereitung“ und groß „Bitte abholen“ mit Bestell- und Tischnummer, Alarmton |
 | `personal.html` | Team | Küchen-Board live mit Ton, Telefon-/WhatsApp-Bestellungen erfassen, Speisekarte & Preise, „Ausverkauft“, Tagesübersicht, QR-Codes, Team |
 
 Kein Build nötig, nur statische Dateien.
@@ -70,3 +71,18 @@ Preise und Gerichte änderst du **nicht** in den Dateien, sondern in `personal.h
 4. Kasse: **Ausgegeben** / **Ausgeliefert** → abgeschlossen.
 
 Telefon-/Theken-Bestellungen, die schon bezahlt sind, gehen beim Anlegen direkt in die Küche (Zahlung „Bar“ oder „Karte“ wählen).
+
+## Online-Zahlung (Karte, PayPal, Apple Pay, Google Pay) über Stripe
+
+Die Funktionen `create-checkout` und `stripe-webhook` laufen schon in Supabase (Code in `supabase/functions/`).
+Solange kein Stripe-Schlüssel hinterlegt ist, zeigt die Gäste-App nur „Bar an der Kasse“.
+
+1. Stripe-Konto anlegen (stripe.com) → Einstellungen → Zahlungsmethoden → **PayPal**, Apple Pay, Google Pay aktivieren.
+2. Supabase → Edge Functions → **Secrets** → `STRIPE_SECRET_KEY` = geheimer Schlüssel (`sk_test_…` zum Testen, später `sk_live_…`).
+3. Stripe → Entwickler → **Webhooks** → Endpunkt hinzufügen:
+   `https://trwvzjgkygoggnomfovi.supabase.co/functions/v1/stripe-webhook`
+   Ereignisse: `checkout.session.completed`, `checkout.session.async_payment_succeeded`
+   → Signatur-Geheimnis kopieren → Supabase-Secret `STRIPE_WEBHOOK_SECRET`.
+4. Eigene Domain statt GitHub Pages? Secret `APP_ORIGINS` = `https://menu.example.de` (mehrere mit Komma).
+
+Online bezahlte Bestellungen gehen ohne Kasse direkt in die Küche. Stornos online bezahlter Bestellungen im Stripe-Dashboard erstatten.
