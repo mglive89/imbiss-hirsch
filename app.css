@@ -1,0 +1,53 @@
+/* Imbiss Hirsch – shared look: flyer black, kraft-paper accent, condensed labels */
+:root{
+  --bg:#0d0c0b; --surface:#181614; --surface-2:#221f1c; --fg:#f3efe8; --muted:#a39b90; --faint:#7d766d; --line:#2c2925;
+  --kraft:#c9a274; --kraft-ink:#1a140d;
+  --ok:#7fbf5f; --warn:#e5b54a; --bad:#d9734f; --info:#7fa8d9;
+  --display:"Ultra", "Rockwell Extra Bold", Georgia, serif;
+  --label:"Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body:"Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:dark;
+  padding-top:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+[hidden]{display:none!important}
+img{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--kraft);outline-offset:2px}
+a{color:var(--kraft)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;
+  padding:8px 14px;font-family:var(--label);font-weight:600;font-size:15px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--fg);text-decoration:none}
+.btn:hover{border-color:#4a453f}
+.btn.primary{background:var(--kraft);border-color:var(--kraft);color:var(--kraft-ink)}
+.btn.danger{color:var(--bad);border-color:#5a2f22}
+.btn.big{padding:13px 22px;font-size:18px;font-weight:700;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:default}
+
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label,.lbl{font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+input[type=text],input[type=tel],input[type=email],input[type=password],input[type=number],input[type=url],input[type=date],input[type=search],select,textarea{
+  background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:64px}
+input:focus,select:focus,textarea:focus{border-color:var(--kraft);outline:none}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-wrap:nowrap}
+.seg button{background:transparent;border:0;padding:6px 13px;font-family:var(--label);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--kraft);color:var(--kraft-ink)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--label);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:999px;padding:2px 10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.neu{color:var(--info);border-color:#35506e}
+.pill.zubereitung{color:var(--warn);border-color:#6b5524}
+.pill.fertig{color:var(--ok);border-color:#3e5f2f}
+.pill.storniert{color:var(--bad);border-color:#5a2f22}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);
+  padding:10px 16px;border-radius:8px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
+.toast.err{background:var(--bad);color:#fff}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
