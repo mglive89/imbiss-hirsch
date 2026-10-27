@@ -5,6 +5,7 @@ Zwei Apps, eine Datenbank (Supabase-Projekt `imbiss-hirsch`, Frankfurt):
 | Datei | Für wen | Was |
 |---|---|---|
 | `index.html` | Gäste | Speisekarte in 5 Sprachen, Warenkorb, Bestellung am Tisch / Abholung / Lieferung, Status live |
+| `kueche.html` | Küche | Großes Display (Tablet/TV): nur **bezahlte** Bestellungen, älteste Zahlung zuerst, Start → Fertig, Ton, Vollbild |
 | `personal.html` | Team | Küchen-Board live mit Ton, Telefon-/WhatsApp-Bestellungen erfassen, Speisekarte & Preise, „Ausverkauft“, Tagesübersicht, QR-Codes, Team |
 
 Kein Build nötig, nur statische Dateien.
@@ -60,3 +61,12 @@ Der Code „Abholen & Liefern“ ist für Flyer und Tüten.
 
 `VERSION` in `sw.js` hochzählen (z. B. `ih-app-v2`), damit installierte Apps die neue Version laden.
 Preise und Gerichte änderst du **nicht** in den Dateien, sondern in `personal.html` → „Speisekarte“.
+
+## Ablauf einer Bestellung
+
+1. Gast bestellt per QR (oder ihr erfasst sie unter „Neue Bestellung“) → Spalte **Zu bezahlen** in der Kasse.
+2. Kasse tippt **Bar bezahlt** / **Karte** (Lieferung: **Bei Lieferung**) → Bestellung erscheint auf dem **Küchen-Display**.
+3. Küche: **Start** → **Fertig** → Nummer erscheint rechts unter „Fertig · zur Ausgabe“.
+4. Kasse: **Ausgegeben** / **Ausgeliefert** → abgeschlossen.
+
+Telefon-/Theken-Bestellungen, die schon bezahlt sind, gehen beim Anlegen direkt in die Küche (Zahlung „Bar“ oder „Karte“ wählen).

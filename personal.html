@@ -199,11 +199,12 @@ h2.view .sp{flex:1}
         <button class="btn" type="button" data-logout>Abmelden</button>
       </div>
       <nav class="tabs" id="tabs">
-        <a class="tab" href="#bestellungen">Bestellungen<span class="badge" id="newBadge" hidden>0</span></a>
+        <a class="tab" href="#bestellungen">Kasse<span class="badge" id="newBadge" hidden>0</span></a>
         <a class="tab" href="#neu">Neue Bestellung</a>
         <a class="tab" href="#karte">Speisekarte</a>
         <a class="tab" href="#uebersicht">Übersicht</a>
         <a class="tab" href="#qr">QR &amp; Team</a>
+        <a class="tab" href="kueche.html" target="_blank" rel="noopener">Küche ↗</a>
       </nav>
     </div>
   </div>
@@ -362,7 +363,7 @@ function alertNew(ids){
   toast(ids.length === 1 ? `Neue Bestellung #${ids[0]}` : `${ids.length} neue Bestellungen`);
 }
 function updateBadge(){
-  const n = orders.filter(o => o.status === "neu").length;
+  const n = orders.filter(o => o.payment === "offen" && !["abgeschlossen","storniert"].includes(o.status)).length;
   $("newBadge").hidden = !n; $("newBadge").textContent = n;
 }
 
@@ -378,36 +379,50 @@ function route(){
 }
 addEventListener("hashchange", () => { if (staff) route(); });
 
-/* ========== 1. KITCHEN BOARD ========== */
+/* ========== 1. TILL BOARD: pay -> kitchen -> ready ========== */
+const PAY = {offen:"Offen", bar:"Bar bezahlt", karte:"Karte bezahlt", bei_lieferung:"Zahlung bei Lieferung"};
 function ticket(o, fresh){
-  const late = (o.status === "neu" && minsAgo(o.created_at) >= 10) || (o.status === "zubereitung" && minsAgo(o.created_at) >= 20);
+  const paid = o.payment !== "offen";
+  const ref = paid && o.paid_at ? o.paid_at : o.created_at;
+  const late = (!paid && minsAgo(o.created_at) >= 10) || (paid && o.status !== "fertig" && minsAgo(ref) >= 20);
   const lines = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? ` <em class="muted">(${esc(i.note)})</em>` : ""}</span></li>`).join("");
   const meta = [];
   if (o.customer_name) meta.push(`<b>${esc(o.customer_name)}</b>`);
   if (o.phone) meta.push(esc(o.phone));
   if (o.address) meta.push(esc(o.address));
   meta.push(SRC[o.source] || o.source);
-  const next = {neu:["zubereitung","Annehmen"], zubereitung:["fertig","Fertig"], fertig:["abgeschlossen", o.channel === "lieferung" ? "Ausgeliefert" : "Abgeholt / bezahlt"]}[o.status];
-  return `<article class="ticket ${o.status}${fresh ? " fresh" : ""}" data-id="${o.id}">
+  let actions = "";
+  if (!paid){
+    actions = (o.channel === "lieferung" ? `<button class="btn" type="button" data-pay="${o.id}" data-m="bei_lieferung">Bei Lieferung</button>` : "")
+      + `<button class="btn" type="button" data-pay="${o.id}" data-m="karte">Karte</button>`
+      + `<button class="btn primary" type="button" data-pay="${o.id}" data-m="bar">Bar bezahlt</button>`;
+  } else if (o.status === "fertig"){
+    actions = `<button class="btn" type="button" data-back="${o.id}">Zurück</button><button class="btn primary" type="button" data-next="${o.id}" data-to="abgeschlossen">${o.channel === "lieferung" ? "Ausgeliefert" : "Ausgegeben"}</button>`;
+  } else {
+    actions = `<button class="btn" type="button" data-unpay="${o.id}">Zahlung zurück</button><button class="btn primary" type="button" data-next="${o.id}" data-to="fertig">Fertig</button>`;
+  }
+  return `<article class="ticket ${paid ? o.status : "neu"}${fresh ? " fresh" : ""}" data-id="${o.id}">
     <div class="t-head"><span class="t-no">#${o.id}</span><span class="t-where">${where(o)}</span>
-      <span class="t-time${late ? " late" : ""}" title="${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(o.created_at)} min</span></div>
-    <div class="t-meta">${meta.join(" · ")}</div>
+      <span class="t-time${late ? " late" : ""}" title="eingegangen ${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(ref)} min</span></div>
+    <div class="t-meta">${meta.join(" · ")}${paid ? ` · <span class="pill fertig">${PAY[o.payment]}</span>` : ""}${paid && o.status === "zubereitung" ? ` <span class="pill zubereitung">Wird zubereitet</span>` : ""}</div>
     <ul class="t-items">${lines}</ul>
     ${o.note ? `<div class="t-note">${esc(o.note)}</div>` : ""}
     <div class="t-foot"><span class="sum">${eur(o.total)}</span>
-      <button class="btn danger" type="button" data-cancel="${o.id}">Storno</button>
-      ${o.status !== "neu" ? `<button class="btn" type="button" data-back="${o.id}">Zurück</button>` : ""}
-      <button class="btn primary" type="button" data-next="${o.id}" data-to="${next[0]}">${next[1]}</button></div>
+      <button class="btn danger" type="button" data-cancel="${o.id}">Storno</button>${actions}</div>
   </article>`;
 }
 function renderBoard(fresh){
   if (current !== "bestellungen") return;
-  const cols = [["neu","Neu"],["zubereitung","In Zubereitung"],["fertig","Fertig"]];
+  const active = orders.filter(o => !["abgeschlossen","storniert"].includes(o.status));
+  const cols = [
+    ["neu", "Zu bezahlen", active.filter(o => o.payment === "offen"), "Gast bezahlt an der Theke → Bestellung geht in die Küche"],
+    ["zubereitung", "In der Küche", active.filter(o => o.payment !== "offen" && o.status !== "fertig").sort((a,b) => new Date(a.paid_at) - new Date(b.paid_at)), "Läuft auf dem Küchen-Display"],
+    ["fertig", "Fertig zur Ausgabe", active.filter(o => o.payment !== "offen" && o.status === "fertig"), "Ausgeben oder ausliefern"]
+  ];
   const doneToday = orders.filter(o => o.status === "abgeschlossen" || o.status === "storniert").reverse();
-  let h = `<h2 class="view">Bestellungen<span class="sp"></span><span class="muted" style="font-size:15px;font-family:var(--body);text-transform:none;font-weight:400">Neue Bestellungen erscheinen automatisch</span></h2><div class="board">`;
-  for (const [st, label] of cols){
-    const list = orders.filter(o => o.status === st);
-    h += `<div class="col"><h3><span class="pill ${st}">${label}</span><span class="n">${list.length}</span></h3><div class="stack">`
+  let h = `<h2 class="view">Kasse &amp; Bestellungen<span class="sp"></span><a class="btn" href="kueche.html" target="_blank" rel="noopener">Küchen-Display öffnen</a></h2><div class="board">`;
+  for (const [st, label, list, hint] of cols){
+    h += `<div class="col"><h3><span class="pill ${st}">${label}</span><span class="n">${list.length}</span></h3><p class="muted" style="margin:-4px 0 10px;font-size:13px">${hint}</p><div class="stack">`
       + (list.length ? list.map(o => ticket(o, fresh.includes(o.id))).join("") : `<div class="empty">Keine</div>`) + `</div></div>`;
   }
   h += `</div><details class="done-list"><summary>Heute erledigt (${doneToday.length})</summary><div class="dl">`
@@ -416,14 +431,26 @@ function renderBoard(fresh){
   const open = document.querySelector(".done-list")?.open;
   $("v-bestellungen").innerHTML = h;
   if (open) document.querySelector(".done-list").open = true;
-  $("v-bestellungen").querySelectorAll("[data-next]").forEach(b => b.onclick = () => setStatus(+b.dataset.next, b.dataset.to));
-  $("v-bestellungen").querySelectorAll("[data-back]").forEach(b => b.onclick = () => {
-    const o = orders.find(x => x.id === +b.dataset.back); setStatus(o.id, o.status === "fertig" ? "zubereitung" : "neu");
+  const V = $("v-bestellungen");
+  V.querySelectorAll("[data-next]").forEach(b => b.onclick = () => setStatus(+b.dataset.next, b.dataset.to));
+  V.querySelectorAll("[data-back]").forEach(b => b.onclick = () => setStatus(+b.dataset.back, "zubereitung"));
+  V.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => setPayment(+b.dataset.pay, b.dataset.m));
+  V.querySelectorAll("[data-unpay]").forEach(b => b.onclick = () => {
+    if (b.dataset.armed){ setPayment(+b.dataset.unpay, "offen"); return; }
+    b.dataset.armed = "1"; b.textContent = "Wirklich zurück?"; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = "Zahlung zurück"; } }, 3500);
   });
-  $("v-bestellungen").querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => {
+  V.querySelectorAll("[data-cancel]").forEach(b => b.onclick = () => {
     if (b.dataset.armed){ setStatus(+b.dataset.cancel, "storniert"); return; }
     b.dataset.armed = "1"; b.textContent = "Wirklich stornieren?"; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = "Storno"; } }, 3500);
   });
+}
+async function setPayment(id, payment){
+  const o = orders.find(x => x.id === id);
+  const patch = payment === "offen" ? {payment, status: "neu"} : {payment};
+  if (o){ Object.assign(o, patch); if (payment !== "offen") o.paid_at = new Date().toISOString(); renderBoard([]); updateBadge(); }
+  const { error } = await sb.from("orders").update(patch).eq("id", id);
+  if (error){ toast("Zahlung konnte nicht gespeichert werden", true); loadOrders(false); return; }
+  if (payment !== "offen") toast(`#${id} → Küche`);
 }
 async function setStatus(id, status){
   const o = orders.find(x => x.id === id); if (o) o.status = status; renderBoard([]); updateBadge();
@@ -433,7 +460,7 @@ async function setStatus(id, status){
 setInterval(() => { if (current === "bestellungen" && staff) renderBoard([]); }, 60000);
 
 /* ========== 2. NEW ORDER (phone / WhatsApp / counter) ========== */
-const nd = {cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", table:"", name:"", phone:"", address:"", note:"", err:""};
+const nd = {cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", payment: "offen", table:"", name:"", phone:"", address:"", note:"", err:""};
 const ndPrice = it => nd.channel === "lieferung" ? (+(it.price_delivery ?? it.price_pickup)) : +it.price_pickup;
 function renderNew(){
   if (!nd.cat && cats.length) nd.cat = cats[0].id;
@@ -458,6 +485,8 @@ function renderNew(){
     <div class="field"><label for="ndPhone">Telefon</label><input id="ndPhone" type="tel" value="${esc(nd.phone)}"></div></div>`}
     ${nd.channel === "lieferung" ? `<div class="field"><label for="ndAddr">Adresse</label><textarea id="ndAddr" rows="2">${esc(nd.address)}</textarea></div>` : ""}
     <div class="field"><label for="ndNote">Anmerkung</label><textarea id="ndNote" rows="2">${esc(nd.note)}</textarea></div>
+    <div class="field"><span class="lbl">Zahlung</span><div class="seg" id="ndPay">${["offen","bar","karte"].concat(nd.channel === "lieferung" ? ["bei_lieferung"] : []).map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.payment===s}">${{offen:"Noch offen",bar:"Bar",karte:"Karte",bei_lieferung:"Bei Lieferung"}[s]}</button>`).join("")}</div>
+      <span class="muted" style="font-size:13px">${nd.payment === "offen" ? "Geht erst nach dem Bezahlen in die Küche." : "Geht sofort in die Küche."}</span></div>
     ${nd.err ? `<p class="err" role="alert">${esc(nd.err)}</p>` : ""}
     <button type="button" class="btn big primary" id="ndSend" ${lines.length ? "" : "disabled"}>Bestellung anlegen · ${eur(total)}</button>
   </div></div>`;
@@ -467,7 +496,10 @@ function renderNew(){
   $("v-neu").querySelectorAll("[data-add]").forEach(b => b.onclick = () => { ndCapture(); nd.cart[b.dataset.add] = (nd.cart[b.dataset.add]||0) + 1; renderNew(); });
   $("v-neu").querySelectorAll("[data-q]").forEach(b => b.onclick = () => { ndCapture(); const id = b.dataset.id; nd.cart[id] += +b.dataset.q; if (nd.cart[id] <= 0) delete nd.cart[id]; renderNew(); });
   $("ndSrc").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.source = b.dataset.v; renderNew(); });
-  $("ndCh").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.channel = b.dataset.v; renderNew(); });
+  $("ndCh").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.channel = b.dataset.v;
+    if (nd.channel === "lieferung" && nd.payment === "offen") nd.payment = "bei_lieferung";
+    if (nd.channel !== "lieferung" && nd.payment === "bei_lieferung") nd.payment = "offen"; renderNew(); });
+  $("ndPay").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.payment = b.dataset.v; renderNew(); });
   $("ndSend").onclick = ndSend;
 }
 function ndCapture(){
@@ -480,7 +512,7 @@ function ndCapture(){
 }
 async function ndSend(){
   ndCapture(); nd.err = "";
-  const p = {channel: nd.channel, source: nd.source, table_no: nd.channel === "tisch" ? nd.table : null,
+  const p = {channel: nd.channel, source: nd.source, payment: nd.payment, table_no: nd.channel === "tisch" ? nd.table : null,
     name: nd.channel === "tisch" ? null : nd.name, phone: nd.channel === "tisch" ? null : nd.phone,
     address: nd.channel === "lieferung" ? nd.address : null, note: nd.note, lang: "de",
     items: Object.entries(nd.cart).map(([id,qty]) => ({id, qty}))};
@@ -488,7 +520,7 @@ async function ndSend(){
   const { data, error } = await sb.rpc("place_order", {p});
   if (error){ nd.err = error.message; renderNew(); return; }
   toast(`Bestellung #${data.id} angelegt`);
-  Object.assign(nd, {cart:{}, table:"", name:"", phone:"", address:"", note:"", err:""});
+  Object.assign(nd, {cart:{}, table:"", name:"", phone:"", address:"", note:"", err:"", payment: nd.channel === "lieferung" ? "bei_lieferung" : "offen"});
   renderNew(); loadOrders(false);
 }
 

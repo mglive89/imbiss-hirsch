@@ -227,6 +227,8 @@ const T = {
   needAddr:["Bitte Name, Telefon und Adresse angeben.","Please enter name, phone and address.","Inserisci nome, telefono e indirizzo.","Lütfen isim, telefon ve adres girin.","Indiquez nom, téléphone et adresse."],
   thanks:  ["Danke! Deine Bestellung","Thank you! Your order","Grazie! Il tuo ordine","Teşekkürler! Siparişiniz","Merci ! Votre commande"],
   keepOpen:["Lass diese Seite offen, hier siehst du den Status.","Keep this page open to follow the status.","Tieni aperta questa pagina per vedere lo stato.","Durumu görmek için bu sayfayı açık tutun.","Gardez cette page ouverte pour suivre le statut."],
+  payFirst:["Bitte an der Theke bezahlen – dann geht's in die Küche","Please pay at the counter – then it goes to the kitchen","Paga al banco – poi va in cucina","Lütfen kasada ödeyin – sonra mutfağa gider","Payez au comptoir – ensuite ça part en cuisine"],
+  st_paid: ["Bezahlt · in der Küche","Paid · in the kitchen","Pagato · in cucina","Ödendi · mutfakta","Payée · en cuisine"],
   st_neu:  ["Eingegangen","Received","Ricevuto","Alındı","Reçue"],
   st_zubereitung:["Wird zubereitet","Being prepared","In preparazione","Hazırlanıyor","En préparation"],
   st_fertig:["Fertig","Ready","Pronto","Hazır","Prête"],
@@ -472,16 +474,19 @@ function showOrder(o){
 }
 async function pollStatus(o){
   clearTimeout(pollTimer);
-  let st = null;
+  let st = null, pay = "offen";
   try{
     const { data } = await sb.rpc("order_status", {p_id: o.id, p_token: o.token});
-    st = data && data.status;
+    st = data && data.status; pay = (data && data.payment) || "offen";
   }catch(e){}
   if (st){
+    o.pay = pay;
     renderTrack(o, st);
     const el = $("steps");
     if (el && sheetMode === "order"){
-      const label = st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick")) : tr("st_" + st);
+      const label = st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
+        : st === "neu" ? (pay === "offen" ? (o.channel === "lieferung" ? tr("st_neu") : tr("payFirst")) : tr("st_paid"))
+        : tr("st_" + st);
       el.innerHTML = `<span class="pill ${st}" style="font-size:16px;padding:6px 14px">${esc(label)}</span>`;
     }
     if (st === "abgeschlossen" || st === "storniert"){ if (st === "abgeschlossen") store.del("ih-last-order"); return; }
@@ -493,7 +498,8 @@ function renderTrack(o, st){
   if (!o || st === "abgeschlossen"){ b.hidden = true; return; }
   b.hidden = false; b.className = "pill track " + st;
   b.style.background = "var(--surface)";
-  b.textContent = "#" + o.id + " · " + (st === "fertig" ? tr("st_fertig") : tr("st_" + st)).split(" –")[0];
+  const short = st === "neu" ? (o.pay && o.pay !== "offen" ? tr("st_paid") : (o.channel === "lieferung" ? tr("st_neu") : tr("payFirst"))) : tr("st_" + st);
+  b.textContent = "#" + o.id + " · " + short.split(" –")[0];
   b.onclick = () => showOrder(o);
 }
 
