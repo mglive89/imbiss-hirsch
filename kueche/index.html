@@ -154,7 +154,7 @@ function render(fresh = []){
     $("queue").innerHTML = queue.length ? queue.map(o => {
       const m = minsAgo(o.paid_at || o.created_at), late = m >= TARGET;
       const items = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? `<em>${esc(i.note)}</em>` : ""}</span></li>`).join("");
-      const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung bei Lieferung" : o.payment === "online" ? "Online bezahlt" : ""].filter(Boolean).join(" · ");
+      const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung offen · bei Lieferung" : o.payment === "online" ? "Online bezahlt" : ""].filter(Boolean).join(" · ");
       return `<article class="card ${o.status}${late ? " late" : ""}${fresh.includes(o.id) ? " fresh" : ""}" data-k="o${o.id}">
         <div class="c-head"><span class="c-no">${o.pickup_code ? `<span class="c-code">${o.pickup_code}</span>` : "#" + o.id}</span><span class="c-where">${where(o)}</span><span class="c-min">${m} min</span></div>
         <div class="c-progress"><i style="--w:${Math.min(100, m / TARGET * 100)}%"></i></div>

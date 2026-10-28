@@ -314,8 +314,8 @@ async function renderStats(animate){
   const topList = Object.entries(top).sort((a, b) => b[1].q - a[1].q).slice(0, 8);
   const maxQ = Math.max(1, ...topList.map(t => t[1].q));
   const chSplit = [["tisch","Tisch","var(--kraft)"],["abholung","Abholung","var(--info)"],["lieferung","Lieferung","var(--ok)"]].map(([k, l, c]) => ({ l, c, n: ok.filter(o => o.channel === k).length }));
-  const payKey = o => o.payment === "online" ? "online" : o.payment === "karte" ? "karte" : "bar";
-  const paySplit = [["bar","Bar","var(--kraft)"],["karte","Karte","var(--info)"],["online","Online","var(--ok)"]].map(([k, l, c]) => ({ l, c, n: sum(ok.filter(o => o.payment !== "offen" && payKey(o) === k)) }));
+  const payKey = o => o.payment === "online" ? "online" : o.payment === "karte" ? "karte" : o.payment === "bei_lieferung" ? "offen" : "bar";
+  const paySplit = [["bar","Bar","var(--kraft)"],["karte","Karte","var(--info)"],["online","Online","var(--ok)"],["offen","Offen (Lieferung)","var(--warn)"]].map(([k, l, c]) => ({ l, c, n: sum(ok.filter(o => o.payment !== "offen" && payKey(o) === k)) }));
   const delta = (a, b, fmt) => { if (!b) return `<span class="d">Vortag: –</span>`; const p = Math.round((a - b) / b * 100); return `<span class="d ${p >= 0 ? "up" : "down"}">${p >= 0 ? "▲" : "▼"} ${Math.abs(p)} % · Vortag ${fmt(b)}</span>`; };
   const split = (arr, fmt) => { const tot = arr.reduce((s, x) => s + x.n, 0) || 1; return `<div class="split">${arr.map(x => `<i style="width:${x.n / tot * 100}%;background:${x.c}"></i>`).join("")}</div>
     <div class="legend">${arr.map(x => `<span><i style="background:${x.c}"></i>${x.l} <b>${fmt(x.n)}</b> <span class="muted">${Math.round(x.n / tot * 100)} %</span></span>`).join("")}</div>`; };
@@ -341,7 +341,7 @@ async function renderStats(animate){
       <div><div class="lbl" style="margin-bottom:8px">Zahlung</div>${split(paySplit, eur)}</div></div></div>
   </div>
   ${deliveriesBox(all)}
-  <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)}${o.pickup_code ? " · Code " + o.pickup_code : ""} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : ""}</span><span class="pill ${o.status} hide-s">${o.channel === "lieferung" && o.status === "abgeschlossen" ? "Zugestellt" : ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
+  <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)}${o.pickup_code ? " · Code " + o.pickup_code : ""} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : " · offen"}</span><span class="pill ${o.status} hide-s">${o.channel === "lieferung" && o.status === "abgeschlossen" ? "Zugestellt" : ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
   wireDay(); wireDelivery();
   const num = x => Math.round(x);
   IH.countUp($("k-rev"), rev, eur, animate ? 0 : prevKpi.rev);
@@ -365,7 +365,8 @@ function deliveriesBox(all){
       const diff = o.eta_at ? Math.round((new Date(o.delivered_at) - new Date(o.eta_at)) / 60000) : null;
       when = `${hhmm(o.delivered_at)}${diff === null ? "" : diff <= 0 ? ` <span style="color:var(--ok)">pünktlich</span>` : ` <span style="color:var(--bad)">+${diff} min</span>`}`;
     } else if (o.eta_at) when = `bis ${hhmm(o.eta_at)}`;
-    return `<div class="dl-row"><b>${o.pickup_code || "#" + o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${esc(o.address || "")}${o.driver_email ? " · " + esc(o.driver_email.split("@")[0]) : ""}</span><span class="pill ${L[k][1]} hide-s">${L[k][0]}</span><span class="num">${when}</span></div>`;
+    const pay = o.payment === "bei_lieferung" || o.payment === "offen" ? ` · <span style="color:var(--warn)">${eur(o.total)} offen</span>` : o.status === "abgeschlossen" ? ` · ${o.payment === "bar" ? "bar kassiert" : o.payment === "karte" ? "Karte kassiert" : "online bezahlt"}` : "";
+    return `<div class="dl-row"><b>${o.pickup_code || "#" + o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${esc(o.address || "")}${o.driver_email ? " · " + esc(o.driver_email.split("@")[0]) : ""}${pay}</span><span class="pill ${L[k][1]} hide-s">${L[k][0]}</span><span class="num">${when}</span></div>`;
   }).join("");
   return `<div class="box" style="margin-top:16px"><h3>Lieferungen heute<small>${d.length} · ${n("zugestellt")} zugestellt · ${n("unterwegs")} unterwegs${delivered.length ? ` · ${Math.round(onTime / delivered.length * 100)} % pünktlich` : ""}</small></h3><div class="dl">${rows}</div></div>`;
 }

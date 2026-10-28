@@ -43,7 +43,7 @@
     const left = Math.round((new Date(o.eta_at).getTime() - Date.now()) / 60000);
     return `bis ${IH.hhmm(o.eta_at)} · ${left >= 0 ? "noch " + left + " min" : Math.abs(left) + " min drüber"}`;
   };
-  IH.PAY = { offen: "Offen", bar: "Bar bezahlt", karte: "Karte bezahlt", bei_lieferung: "Zahlung bei Lieferung", online: "Online bezahlt" };
+  IH.PAY = { offen: "Offen", bar: "Bar bezahlt", karte: "Karte bezahlt", bei_lieferung: "Offen · bei Lieferung", online: "Online bezahlt" };
   IH.PM = { card: "Karte", paypal: "PayPal", apple_pay: "Apple Pay", google_pay: "Google Pay" };
   IH.where = (o) => (o.channel === "tisch" ? `Tisch ${IH.esc(o.table_no)}` : o.channel === "abholung" ? "Abholung" : "Lieferung");
 

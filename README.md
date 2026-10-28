@@ -23,6 +23,7 @@ Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-
 4. „Fertig“ löst einen Alarm aus: beim Gast auf dem Handy, an der Kasse und groß auf der **Abhol-Anzeige** mit Tischnummer.
 5. **Kasse** gibt aus → abgeschlossen. Das **Dashboard** zählt live mit.
    **Lieferungen**: Kasse setzt die Wartezeit (30 / 45 / 60 min) → der Gast sieht „Lieferung ca. 13:45 Uhr“. Sobald die Küche „Fertig“ drückt, erscheint die Lieferung in der **Fahrer-App** (mit Ton): Adresse, Telefon, Betrag. „Losfahren“ öffnet Google Maps und meldet dem Gast „Unterwegs“. An der Tür: „Bar kassiert“ / „Karte kassiert“ bzw. „Zugestellt“ → Dashboard zeigt „Zugestellt 14:02 · pünktlich“.
+   **Zahlung bei Lieferung** bleibt überall als **offen** markiert (Kasse, Küche, Fahrer, Dashboard „Offen (Lieferung)“), bis der Fahrer „Bar kassiert“ / „Karte kassiert“ tippt. Dann sieht der Gast „Danke! Bezahlt: 21,80 € bar ✓“ und die Bewertung.
    **Lieferservice an/aus**: Dashboard → Übersicht → Schalter „Lieferservice“. Aus = Gäste sehen nur Abholen und Tisch (sofort, ohne Neuladen); an der Kasse kann das Personal trotzdem Lieferungen eintragen.
 6. Nach dem Abholen fragt die **Kunden-App** nach 1–5 Sternen und einem Kommentar und bietet danach **allen** Gästen den Link zur Google-Bewertung an (Google erlaubt nicht, nur zufriedene Gäste weiterzuleiten). Auswertung: **Dashboard → Bewertungen**. Der Google-Link steht in `shared/config.js`.
 

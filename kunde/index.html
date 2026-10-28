@@ -183,6 +183,16 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 .feats li.off #fOrderTx{color:var(--warn)}
 .stline{font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 0;min-height:1.4em}
 .stline.cancel{color:var(--bad)}
+.payline{margin:10px auto 0;max-width:34ch;border-radius:12px;padding:9px 12px;font-family:var(--label);font-weight:600;font-size:16px;letter-spacing:.02em;text-transform:uppercase}
+.payline.due{background:rgba(229,181,74,.10);border:1px solid #6b5524;color:var(--warn)}
+.payline.ok{background:rgba(127,191,95,.10);border:1px solid #3e5f2f;color:var(--ok)}
+.thanks{display:flex;flex-direction:column;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line);width:100%}
+.thanks .chk{width:84px;height:84px}
+.thanks .chk circle{fill:none;stroke:var(--ok);stroke-width:4;stroke-dasharray:252;stroke-dashoffset:252;animation:drawC .7s .1s var(--ease) forwards}
+.thanks .chk path{fill:none;stroke:var(--ok);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:drawC .45s .7s var(--ease) forwards}
+@keyframes drawC{to{stroke-dashoffset:0}}
+.thanks b{font-family:var(--display);font-size:40px;line-height:1;color:var(--ok)}
+.thanks .pd{font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;letter-spacing:.03em;color:var(--fg)}
 @media (prefers-reduced-motion:no-preference){
   .coverwrap{animation:heroIn 1s var(--spring) both}
   .coverwrap::after{animation:shine 7s 1.4s ease-in-out infinite}
@@ -351,6 +361,7 @@ const T = {
   rateDone:["Fertig","Done","Fatto","Tamam","Terminé"],
   yourCode:["Dein Abholcode","Your pickup code","Il tuo codice","Teslim kodunuz","Votre code"],
   codeHint:["Nenne diesen Code an der Kasse","Tell this code at the counter","Comunica questo codice alla cassa","Bu kodu kasada söyleyin","Donnez ce code au comptoir"],
+  codeHintDeliv:["Dein Code für die Lieferung – der Fahrer kennt ihn","Your delivery code – the driver has it too","Il tuo codice di consegna – lo ha anche il fattorino","Teslimat kodunuz – kuryede de var","Votre code de livraison – le livreur l'a aussi"],
   codeShort:["Code","Code","Codice","Kod","Code"],
   delivOff:["Lieferung gerade pausiert – Abholen geht","Delivery paused right now – pick-up available","Consegna in pausa – puoi ritirare","Paket servis şu an kapalı – gel-al mümkün","Livraison en pause – à emporter possible"],
   stepOnWay:["Unterwegs","On the way","In viaggio","Yolda","En route"],
@@ -359,6 +370,14 @@ const T = {
   onWayTx:["Dein Essen ist auf dem Weg zu dir","Your food is on its way","Il tuo cibo sta arrivando","Yemeğiniz yolda","Votre repas arrive"],
   etaAt:["Lieferung ca. {t} Uhr","Delivery around {t}","Consegna verso le {t}","Teslimat yaklaşık {t}","Livraison vers {t}"],
   okThanks:["Super, danke","Great, thanks","Perfetto, grazie","Harika, teşekkürler","Super, merci"],
+  stepDelivered:["Geliefert","Delivered","Consegnato","Teslim edildi","Livré"],
+  st_confirmed:["Bestätigt · geht in die Küche","Confirmed · going to the kitchen","Confermato · va in cucina","Onaylandı · mutfağa gidiyor","Confirmée · part en cuisine"],
+  payOpen:["Zahlung offen: {a} – bitte bar oder Karte beim Fahrer","Payment due: {a} – cash or card to the driver","Da pagare: {a} – contanti o carta al fattorino","Ödenecek: {a} – kuryeye nakit veya kart","À payer : {a} – espèces ou carte au livreur"],
+  payDoneOnline:["Online bezahlt ✓","Paid online ✓","Pagato online ✓","Online ödendi ✓","Payé en ligne ✓"],
+  payDoneCash:["Bezahlt: {a} bar ✓","Paid: {a} cash ✓","Pagato: {a} in contanti ✓","Ödendi: {a} nakit ✓","Payé : {a} en espèces ✓"],
+  payDoneCard:["Bezahlt: {a} mit Karte ✓","Paid: {a} by card ✓","Pagato: {a} con carta ✓","Ödendi: {a} kartla ✓","Payé : {a} par carte ✓"],
+  thanksTitle:["Danke!","Thank you!","Grazie!","Teşekkürler!","Merci !"],
+  thanksDeliv:["Geliefert und bezahlt – vielen Dank für deine Bestellung. Guten Appetit!","Delivered and paid – thank you for your order. Enjoy!","Consegnato e pagato – grazie per il tuo ordine. Buon appetito!","Teslim edildi ve ödendi – siparişiniz için teşekkürler. Afiyet olsun!","Livré et payé – merci pour votre commande. Bon appétit !"],
   okComing:["OK, ich komme","OK, on my way","OK, arrivo","Tamam, geliyorum","OK, j'arrive"],
   stepOrdered:["Bestellt","Ordered","Ordinato","Sipariş","Commandé"],
   stepPaid:["Bezahlt","Paid","Pagato","Ödendi","Payé"],
@@ -667,9 +686,10 @@ let pollTimer = null, readyRepeat = null;
 function showOrder(o, msg){
   openSheet("order");
   $("sheetBody").innerHTML = `<h2 id="sheetTitle">${esc(tr("myOrder"))}<button type="button" class="x" id="xBtn" aria-label="${esc(tr("close"))}">×</button></h2>
-    <div class="done"><div class="lbl">${esc(tr("thanks"))}</div>${o.code ? `<div class="codebox pop"><span class="lbl">${esc(tr("yourCode"))}</span><div class="code num" aria-label="${esc(o.code.split("").join(" "))}">${o.code.split("").map((d, i) => `<b style="--i:${i}">${d}</b>`).join("")}</div><span class="codehint">${esc(tr("codeHint"))}</span><small class="muted">#${o.id}</small></div>` : `<div class="big num pop">#${o.id}</div>`}
-    <ol class="stepper" id="stepper">${["stepOrdered","stepPaid","stepKitchen", o.channel === "lieferung" ? "stepOnWay" : "stepReady"].map(k => `<li><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>${esc(tr(k))}</span></li>`).join("")}</ol>
-    <p class="stline" id="steps" aria-live="polite"></p>${msg ? `<p class="err" style="margin-top:12px">${esc(msg)}</p>` : ""}
+    <div class="done"><div class="lbl">${esc(tr("thanks"))}</div>${o.code ? `<div class="codebox pop"><span class="lbl">${esc(tr("yourCode"))}</span><div class="code num" aria-label="${esc(o.code.split("").join(" "))}">${o.code.split("").map((d, i) => `<b style="--i:${i}">${d}</b>`).join("")}</div><span class="codehint">${esc(o.channel === "lieferung" ? tr("codeHintDeliv") : tr("codeHint"))}</span><small class="muted">#${o.id}</small></div>` : `<div class="big num pop">#${o.id}</div>`}
+    <ol class="stepper" id="stepper">${(o.channel === "lieferung" ? ["stepOrdered","stepKitchen","stepOnWay","stepDelivered"] : ["stepOrdered","stepPaid","stepKitchen","stepReady"]).map(k => `<li><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>${esc(tr(k))}</span></li>`).join("")}</ol>
+    <p class="stline" id="steps" aria-live="polite"></p>
+    ${o.channel === "lieferung" ? `<p class="payline" id="payline"></p>` : ""}${msg ? `<p class="err" style="margin-top:12px">${esc(msg)}</p>` : ""}
     <div id="payArea"></div>
     <p class="hint" style="margin-top:14px">${esc(tr("keepOpen"))}</p></div>
     <button type="button" class="btn" id="soundBtn"></button>
@@ -688,7 +708,7 @@ async function pollStatus(o){
   try{
     const { data } = await sb.rpc("order_status", {p_id: o.id, p_token: o.token});
     st = data && data.status; pay = (data && data.payment) || "offen";
-    if (data){ o.eta_at = data.eta_at || null; }
+    if (data){ o.eta_at = data.eta_at || null; o.total = data.total; }
     if (data && data.code && !o.code) o.code = data.code;
   }catch(e){}
   if (st){
@@ -699,7 +719,7 @@ async function pollStatus(o){
     if (o.channel === "lieferung" && st === "unterwegs" && prev && prev !== "unterwegs") onWayAlarm(o);
     const el = $("steps");
     if (el && sheetMode === "order"){
-      const label = st === "unterwegs" ? tr("st_unterwegs") : st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
+      const label = o.channel === "lieferung" && st === "neu" && pay !== "offen" ? tr("st_confirmed") : st === "unterwegs" ? tr("st_unterwegs") : st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
         : st === "neu" ? (pay === "offen" ? (o.justPaid ? tr("payWait") : o.channel === "lieferung" ? tr("st_neu") : tr("payFirst")) : tr("st_paid"))
         : tr("st_" + st);
       const eta = o.channel === "lieferung" && o.eta_at && ["neu","zubereitung","fertig","unterwegs"].includes(st)
@@ -707,6 +727,7 @@ async function pollStatus(o){
       el.textContent = label + eta;
       el.classList.toggle("cancel", st === "storniert");
       paintStepper(st, pay);
+      paintPayline(o, st, pay);
       const pa = $("payArea");
       if (pa){
         if (pay === "offen" && onlinePay && st !== "storniert" && !o.justPaid){
@@ -724,12 +745,27 @@ async function pollStatus(o){
   }
   pollTimer = setTimeout(() => pollStatus(o), 5000);
 }
+function paintPayline(o, st, pay){
+  const el = $("payline"); if (!el) return;
+  const a = money(+o.total || 0);
+  let t, cls = "due";
+  if (pay === "online"){ t = tr("payDoneOnline"); cls = "ok"; }
+  else if (st === "abgeschlossen" && pay === "bar"){ t = tr("payDoneCash", {a}); cls = "ok"; }
+  else if (st === "abgeschlossen" && pay === "karte"){ t = tr("payDoneCard", {a}); cls = "ok"; }
+  else t = tr("payOpen", {a});
+  if (el.dataset.cls && el.dataset.cls !== cls) IH.bump(el);
+  el.dataset.cls = cls; el.className = "payline " + cls; el.textContent = t;
+}
 function paintStepper(st, pay){
   const sp = $("stepper"); if (!sp) return;
   const paid = pay && pay !== "offen";
   const deliv = lastOrderChannel() === "lieferung";
-  const cur = st === "abgeschlossen" ? 4 : st === "unterwegs" ? 3 : st === "fertig" ? (deliv ? 3 : 4) : (st === "zubereitung" || paid) ? 2 : 1;
-  sp.style.setProperty("--p", cur >= 4 ? 1 : (cur - 1 + (st === "zubereitung" || st === "unterwegs" ? 0.5 : 0)) / 3);
+  // delivery: Bestellt → Küche → Unterwegs → Geliefert · otherwise: Bestellt → Bezahlt → Küche → Fertig
+  const cur = deliv
+    ? (st === "abgeschlossen" ? 4 : (st === "fertig" || st === "unterwegs") ? 2 : 1)
+    : (st === "fertig" || st === "abgeschlossen") ? 4 : (st === "zubereitung" || paid) ? 2 : 1;
+  const half = st === "zubereitung" || st === "unterwegs" ? 0.5 : 0;
+  sp.style.setProperty("--p", cur >= 4 ? 1 : (cur - 1 + half) / 3);
   [...sp.children].forEach((li, i) => {
     const wasDone = li.classList.contains("done");
     li.classList.toggle("done", i < cur);
@@ -769,8 +805,12 @@ function showRating(o){
   if (sheetMode === "order") closeSheet();
   if ($("readyOv").classList.contains("open")){ IH.close($("readyOv")); clearInterval(readyRepeat); }
   renderTrack(null);
-  $("rateBox").innerHTML = `<h2 id="rateTitle">${esc(tr("rateTitle"))}</h2>
-    <p>${esc(tr("rateSub", {n: o.code || o.id}))}</p>
+  const deliv = o.channel === "lieferung";
+  const payTxt = o.pay === "online" ? tr("payDoneOnline") : o.pay === "karte" ? tr("payDoneCard", {a: money(+o.total || 0)}) : o.pay === "bar" ? tr("payDoneCash", {a: money(+o.total || 0)}) : "";
+  $("rateBox").innerHTML = (deliv ? `<div class="thanks"><svg class="chk" viewBox="0 0 90 90" aria-hidden="true"><circle cx="45" cy="45" r="40"/><path d="M27 46l12 12 24-26"/></svg>
+      <b>${esc(tr("thanksTitle"))}</b>${payTxt ? `<span class="pd">${esc(payTxt)}</span>` : ""}<p>${esc(tr("thanksDeliv"))}</p></div>` : "")
+    + `<h2 id="rateTitle">${esc(tr("rateTitle"))}</h2>
+    ${deliv ? "" : `<p>${esc(tr("rateSub", {n: o.code || o.id}))}</p>`}
     <div class="stars" id="stars" role="radiogroup" aria-label="${esc(tr("rateHint"))}">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" aria-label="${k}" data-r="${k}" style="--i:${k-1}">${STAR}</button>`).join("")}</div>
     <div class="ratelbl" id="rateLbl">${esc(tr("rateHint"))}</div>
     <textarea id="rateTx" rows="3" maxlength="1000" placeholder="${esc(tr("rateComment"))}"></textarea>
@@ -789,6 +829,7 @@ function showRating(o){
   $("rateSend").onclick = sendRating;
   $("rateLater").onclick = () => finishRating(false);
   IH.open($("rateOv"));
+  if (deliv){ if (window.IHSound && IHSound.on) IHSound.paid(); setTimeout(() => IH.burst(innerWidth / 2, innerHeight * 0.22), 700); }
 }
 async function sendRating(){
   const o = ratingOrder, btn = $("rateSend");

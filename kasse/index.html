@@ -31,6 +31,7 @@
 .ticket{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--info);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;will-change:transform}
 .ticket.zubereitung{border-left-color:var(--warn)}
 .ticket.fertig{border-left-color:var(--ok)}
+.ticket.unterwegs{border-left-color:#5fb4aa}
 .ticket.fresh{animation:glow 1.2s ease-in-out 4}
 .ticket.found{animation:found 1s ease-in-out 3;border-color:var(--kraft)}
 @keyframes found{50%{box-shadow:0 0 0 5px rgba(201,162,116,.55);transform:scale(1.02)}}
@@ -258,6 +259,9 @@ function ticket(o, fresh){
     actions = (o.channel === "lieferung" ? `<button class="btn" type="button" data-pay="${o.id}" data-m="bei_lieferung">Bei Lieferung</button>` : "")
       + `<button class="btn" type="button" data-pay="${o.id}" data-m="karte">Karte</button>`
       + `<button class="btn primary" type="button" data-pay="${o.id}" data-m="bar">Bar bezahlt</button>`;
+  } else if (o.channel === "lieferung" && o.payment === "bei_lieferung" && (o.status === "unterwegs" || o.status === "fertig")){
+    actions = (o.status === "fertig" ? `<button class="btn" type="button" data-back="${o.id}">Zurück</button>` : "")
+      + `<button class="btn" type="button" data-collect="${o.id}" data-m="karte">Karte kassiert</button><button class="btn ok" type="button" data-collect="${o.id}" data-m="bar">Bar kassiert</button>`;
   } else if (o.status === "unterwegs"){
     actions = `<button class="btn ok" type="button" data-next="${o.id}" data-to="abgeschlossen">Zugestellt</button>`;
   } else if (o.status === "fertig"){
@@ -265,7 +269,7 @@ function ticket(o, fresh){
   } else {
     actions = `<button class="btn" type="button" data-unpay="${o.id}">Zahlung zurück</button><button class="btn primary" type="button" data-next="${o.id}" data-to="fertig">Fertig</button>`;
   }
-  const payPill = paid ? `<span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : "";
+  const payPill = o.payment === "bei_lieferung" ? `<span class="pill offen">Offen · ${eur(o.total)} bei Lieferung</span>` : paid ? `<span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : "";
   const cookPill = (paid && o.status === "zubereitung" ? `<span class="pill zubereitung">Wird zubereitet</span>` : "")
     + (o.status === "unterwegs" ? `<span class="pill unterwegs">Unterwegs${o.driver_email ? " · " + esc(o.driver_email.split("@")[0]) : ""}</span>` : "")
     + (o.channel === "lieferung" && o.status === "fertig" ? `<span class="pill unterwegs">Wartet auf Fahrer</span>` : "");
@@ -306,6 +310,14 @@ function renderBoard(fresh = [], flashReady = false){
   B.querySelectorAll("[data-back]").forEach(b => b.onclick = () => setStatus(+b.dataset.back, "zubereitung"));
   B.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => setPayment(+b.dataset.pay, b.dataset.m));
   B.querySelectorAll("[data-eta]").forEach(b => b.onclick = () => setEta(+b.dataset.eta, +b.dataset.m));
+  B.querySelectorAll("[data-collect]").forEach(b => b.onclick = async () => {
+    const id = +b.dataset.collect, m = b.dataset.m, o = orders.find(x => x.id === id);
+    if (o){ o.payment = m; o.status = "abgeschlossen"; lastState.set(id, { status: o.status, payment: m }); }
+    renderBoard(); updateBadge();
+    const { error } = await sb.from("orders").update({ payment: m, status: "abgeschlossen" }).eq("id", id);
+    if (error){ IH.toast("Konnte nicht gespeichert werden", "err"); loadOrders(); return; }
+    IH.sound.paid(); IH.toast(`#${id} zugestellt · ${m === "bar" ? "bar" : "Karte"} kassiert`);
+  });
   B.querySelectorAll("[data-unpay]").forEach(b => armed(b, "Wirklich zurück?", "Zahlung zurück", () => setPayment(+b.dataset.unpay, "offen")));
   B.querySelectorAll("[data-cancel]").forEach(b => armed(b, "Wirklich stornieren?", "Storno", () => {
     const o = orders.find(x => x.id === +b.dataset.cancel);
