@@ -74,6 +74,20 @@
 .dl-row .x1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:600px){.dl-row{grid-template-columns:56px 1fr auto}.dl-row .hide-s{display:none}}
 
+/* delivery switch */
+.svc{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--bad);border-radius:16px;padding:14px 16px;margin-bottom:16px;transition:border-color .4s,background-color .4s}
+.svc.on{border-left-color:var(--ok)}
+.svc .ico{width:34px;height:34px;flex:none;fill:none;stroke:var(--bad);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .4s}
+.svc.on .ico{stroke:var(--ok)}
+.svc.on .ico{animation:drive 2.6s ease-in-out infinite}
+@keyframes drive{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+.svc .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.svc b{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em}
+.svc span{color:var(--muted);font-size:14px}
+.switch.big{width:64px;height:36px;border-radius:18px}
+.switch.big::after{width:30px;height:30px}
+.switch.big[aria-checked="true"]::after{transform:translateX(28px)}
+
 /* reviews */
 .rstars{letter-spacing:2px;font-size:16px}
 .rstars em{font-style:normal;color:#4a453f}
@@ -196,11 +210,12 @@
 const { $, esc, eur, hhmm, where, CH, SRC, ST, PAY, PM, store } = IH;
 const LANGS = ["de","en","it","tr","fr"];
 let sb, me, staff, cats = [], items = [], current = null;
+let deliveryOn = true;
 
 IH.splash("../assets/logo.jpg", "Dashboard");
 IH.staffGate({ app: "Dashboard", onReady: async (ctx) => {
   ({ sb, me, staff } = ctx);
-  await loadMenu();
+  await Promise.all([loadMenu(), loadSettings()]);
   subscribe();
   route();
 }});
@@ -217,12 +232,41 @@ async function loadMenu(){
   if (c.error || i.error) return IH.toast("Speisekarte konnte nicht geladen werden", "err");
   cats = c.data; items = i.data;
 }
+async function loadSettings(){
+  const { data } = await sb.from("settings").select("key,value").eq("key", "delivery_enabled").maybeSingle();
+  if (data) deliveryOn = data.value !== false;
+}
+function deliveryCard(){
+  return `<div class="svc${deliveryOn ? " on" : ""}" id="svc">
+    <svg class="ico" viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+    <div class="t"><b>Lieferservice</b><span id="svcTx">${deliveryOn ? "Aktiv – Gäste können per QR Lieferung bestellen" : "Pausiert – Gäste sehen nur Abholen und Tisch"}</span></div>
+    <button type="button" class="switch big" role="switch" id="svcSw" aria-checked="${deliveryOn}" aria-label="Lieferservice an/aus"></button>
+  </div>`;
+}
+function wireDelivery(){
+  const sw = $("svcSw"); if (!sw) return;
+  sw.onclick = async () => {
+    const val = !deliveryOn;
+    deliveryOn = val; paintDelivery();
+    const { error } = await sb.from("settings").upsert({ key: "delivery_enabled", value: val });
+    if (error){ deliveryOn = !val; paintDelivery(); return IH.toast("Konnte nicht gespeichert werden", "err"); }
+    IH.toast(val ? "Lieferservice ist wieder aktiv" : "Lieferservice pausiert");
+  };
+}
+function paintDelivery(){
+  const c = $("svc"); if (!c) return;
+  c.classList.toggle("on", deliveryOn);
+  $("svcSw").setAttribute("aria-checked", deliveryOn);
+  $("svcTx").textContent = deliveryOn ? "Aktiv – Gäste können per QR Lieferung bestellen" : "Pausiert – Gäste sehen nur Abholen und Tisch";
+  IH.bump(c.querySelector(".ico"));
+}
 let liveT;
 function subscribe(){
   sb.channel("dashboard")
     .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
       if (current === "uebersicht" && statsDay === IH.berlinToday()){ clearTimeout(liveT); liveT = setTimeout(() => renderStats(false), 1200); }
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; paintDelivery(); } })
     .on("postgres_changes", { event: "*", schema: "public", table: "feedback" }, () => { if (current === "bewertungen") renderReviews(false); })
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
 }
@@ -249,14 +293,14 @@ async function renderStats(animate){
   const V = $("v-uebersicht");
   const isToday = statsDay === IH.berlinToday();
   if (animate || !V.innerHTML){
-    V.innerHTML = `${head(isToday)}<div class="kpis">${[1,2,3,4].map(() => `<div class="kpi skeleton" style="height:112px"></div>`).join("")}</div>
+    V.innerHTML = `${head(isToday)}${deliveryCard()}<div class="kpis">${[1,2,3,4].map(() => `<div class="kpi skeleton" style="height:112px"></div>`).join("")}</div>
       <div class="grid2"><div class="box skeleton" style="height:240px"></div><div class="box skeleton" style="height:240px"></div></div>`;
-    wireDay();
+    wireDay(); wireDelivery();
   }
   const from = IH.dayRange(IH.addDays(statsDay, -6))[0], to = IH.dayRange(statsDay)[1];
   const { data, error } = await sb.from("orders").select("id,created_at,total,status,channel,source,payment,pay_method,customer_name,table_no,pickup_code,order_items(name_de,qty,unit_price)")
     .gte("created_at", from).lt("created_at", to).order("created_at");
-  if (error){ V.innerHTML = head(isToday) + `<div class="empty">Konnte nicht geladen werden.</div>`; wireDay(); return; }
+  if (error){ V.innerHTML = head(isToday) + `<div class="empty">Konnte nicht geladen werden.</div>`; wireDay(); wireDelivery(); return; }
   const dayOf = o => { const p = IH.berlinParts(new Date(o.created_at)); return `${p.year}-${p.month}-${p.day}`; };
   const byDay = {}; for (const o of data) (byDay[dayOf(o)] ||= []).push(o);
   const all = byDay[statsDay] || [], ok = all.filter(o => o.status !== "storniert");
@@ -277,7 +321,7 @@ async function renderStats(animate){
     <div class="legend">${arr.map(x => `<span><i style="background:${x.c}"></i>${x.l} <b>${fmt(x.n)}</b> <span class="muted">${Math.round(x.n / tot * 100)} %</span></span>`).join("")}</div>`; };
   const maxH = Math.max(1, ...perH), maxW = Math.max(1, ...week.map(w => w.v));
   const g = animate ? " grow" : "";
-  V.innerHTML = `${head(isToday)}
+  V.innerHTML = `${head(isToday)}${deliveryCard()}
   <div class="kpis">
     <div class="kpi"><div class="k">Umsatz</div><div class="v" id="k-rev">${eur(rev)}</div>${delta(rev, prevRev, eur)}</div>
     <div class="kpi"><div class="k">Bestellungen</div><div class="v" id="k-n">${ok.length}</div>${delta(ok.length, prevOk.length, x => x)}</div>
@@ -297,7 +341,7 @@ async function renderStats(animate){
       <div><div class="lbl" style="margin-bottom:8px">Zahlung</div>${split(paySplit, eur)}</div></div></div>
   </div>
   <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)}${o.pickup_code ? " · Code " + o.pickup_code : ""} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : ""}</span><span class="pill ${o.status} hide-s">${ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
-  wireDay();
+  wireDay(); wireDelivery();
   const num = x => Math.round(x);
   IH.countUp($("k-rev"), rev, eur, animate ? 0 : prevKpi.rev);
   IH.countUp($("k-n"), ok.length, num, animate ? 0 : prevKpi.n);

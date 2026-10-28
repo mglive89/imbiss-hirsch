@@ -147,13 +147,14 @@ const { $, esc, eur, hhmm, minsAgo, where, CH, SRC, ST, PAY, PM } = IH;
 let sb, me, staff;
 let cats = [], items = [], orders = [];
 const seen = new Set(), lastState = new Map();
-let firstLoad = true, current = "kasse";
+let firstLoad = true, current = "kasse", deliveryOn = true;
 
 IH.splash("../assets/logo.jpg", "Kasse");
 IH.staffGate({ app: "Kasse", onReady: async (ctx) => {
   ({ sb, me, staff } = ctx);
   if (!IH.sound.on) $("starter").hidden = false;
   await loadMenu();
+  sb.from("settings").select("value").eq("key", "delivery_enabled").maybeSingle().then(({ data }) => { if (data) deliveryOn = data.value !== false; });
   await loadOrders();
   subscribe();
   route();
@@ -210,6 +211,7 @@ function subscribe(){
   sb.channel("kasse")
     .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, again)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_items" }, again)
+    .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; IH.toast(deliveryOn ? "Lieferservice aktiv" : "Lieferservice pausiert"); if (current === "neu") renderNew(); } })
     .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => loadMenu().then(() => current === "neu" && renderNew()))
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
   setInterval(loadOrders, 30000);
@@ -353,7 +355,7 @@ function renderNew(){
     <div id="olines">${lines.map(l => `<div class="oline" data-k="l${l.it.id}"><span>${esc(l.it.names.de)}</span><span class="qty"><button type="button" data-q="-1" data-id="${l.it.id}" aria-label="weniger">−</button><span>${l.qty}</span><button type="button" data-q="1" data-id="${l.it.id}" aria-label="mehr">+</button></span><span class="num">${eur(l.qty * ndPrice(l.it))}</span></div>`).join("") || `<p class="muted" style="margin:0">Gerichte links antippen.</p>`}</div>
     <div class="total"><span>Summe</span><span class="num" id="ndTotal">${eur(total)}</span></div>
     <div class="field"><span class="lbl">Bestellt über</span><div class="seg" id="ndSrc">${["telefon","whatsapp","theke"].map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.source === s}">${SRC[s]}</button>`).join("")}</div></div>
-    <div class="field"><span class="lbl">Art</span><div class="seg" id="ndCh">${["abholung","lieferung","tisch"].map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.channel === s}">${CH[s]}</button>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Art</span><div class="seg" id="ndCh">${["abholung","lieferung","tisch"].map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.channel === s}">${CH[s]}</button>`).join("")}</div>${!deliveryOn ? `<span class="muted" style="font-size:13px">Lieferservice ist für Gäste pausiert. Hier kannst du trotzdem eine Lieferung eintragen.</span>` : ""}</div>
     ${nd.channel === "tisch" ? `<div class="field"><label for="ndTable">Tischnummer</label><input id="ndTable" type="text" inputmode="numeric" maxlength="6" value="${esc(nd.table)}"></div>` : `
     <div class="g2"><div class="field"><label for="ndName">Name</label><input id="ndName" type="text" value="${esc(nd.name)}"></div>
     <div class="field"><label for="ndPhone">Telefon</label><input id="ndPhone" type="tel" value="${esc(nd.phone)}"></div></div>`}

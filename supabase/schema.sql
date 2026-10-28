@@ -279,3 +279,29 @@ end $$;
 revoke execute on function public.new_pickup_code() from public, anon, authenticated;
 -- In place_order: vor dem INSERT  "if v_channel <> 'tisch' then v_code := public.new_pickup_code(); end if;"
 -- und pickup_code = v_code speichern; Rückgabe enthält 'code'.
+
+-- ---------- Einstellungen (Dashboard) ----------
+create table public.settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.settings enable row level security;
+create policy "settings readable" on public.settings for select to anon, authenticated using (true);
+create policy "staff edit settings" on public.settings for all to authenticated using ((select public.is_staff())) with check ((select public.is_staff()));
+create trigger t_settings_upd before update on public.settings for each row execute function public.touch_updated_at();
+insert into public.settings(key, value) values ('delivery_enabled', 'true'::jsonb);
+alter publication supabase_realtime add table public.settings;
+
+-- Lieferservice aus: Gäste (QR) können keine Lieferung bestellen; Personal an der Kasse weiterhin
+create or replace function public.guard_delivery() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.channel = 'lieferung' and new.source = 'qr'
+     and coalesce((select (value)::text::boolean from public.settings where key = 'delivery_enabled'), true) = false then
+    raise exception 'Lieferung ist gerade nicht verfügbar';
+  end if;
+  return new;
+end $$;
+revoke execute on function public.guard_delivery() from public, anon, authenticated;
+create trigger t_orders_delivery before insert on public.orders for each row execute function public.guard_delivery();

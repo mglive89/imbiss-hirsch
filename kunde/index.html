@@ -177,6 +177,10 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 .code b{display:grid;place-items:center;width:58px;height:72px;border-radius:12px;background:var(--kraft);color:var(--kraft-ink);font-family:var(--display);font-size:44px;line-height:1;box-shadow:0 8px 24px rgba(201,162,116,.25)}
 .codebox.pop .code b{animation:popIn .55s var(--spring) both;animation-delay:calc(var(--i) * 90ms + .1s)}
 .codehint{font-family:var(--label);font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.04em;color:var(--fg)}
+.feats li svg,.feats li b{transition:opacity .4s}
+.feats li.off svg,.feats li.off b{opacity:.4}
+.feats li.off #telLink{display:none}
+.feats li.off #fOrderTx{color:var(--warn)}
 .stline{font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 0;min-height:1.4em}
 .stline.cancel{color:var(--bad)}
 @media (prefers-reduced-motion:no-preference){
@@ -348,6 +352,7 @@ const T = {
   yourCode:["Dein Abholcode","Your pickup code","Il tuo codice","Teslim kodunuz","Votre code"],
   codeHint:["Nenne diesen Code an der Kasse","Tell this code at the counter","Comunica questo codice alla cassa","Bu kodu kasada söyleyin","Donnez ce code au comptoir"],
   codeShort:["Code","Code","Codice","Kod","Code"],
+  delivOff:["Lieferung gerade pausiert – Abholen geht","Delivery paused right now – pick-up available","Consegna in pausa – puoi ritirare","Paket servis şu an kapalı – gel-al mümkün","Livraison en pause – à emporter possible"],
   okComing:["OK, ich komme","OK, on my way","OK, arrivo","Tamam, geliyorum","OK, j'arrive"],
   stepOrdered:["Bestellt","Ordered","Ordinato","Sipariş","Commandé"],
   stepPaid:["Bezahlt","Paid","Pagato","Ödendi","Payé"],
@@ -388,7 +393,22 @@ const params = new URLSearchParams(location.search);
 let tableNo = (params.get("tisch") || "").replace(/[^0-9A-Za-z-]/g,"").slice(0,6);
 try { if (tableNo) sessionStorage.setItem("ih-table", tableNo); else tableNo = sessionStorage.getItem("ih-table") || ""; } catch(e){}
 
-let otype = tableNo ? "tisch" : (store.get("ih-otype") === "lieferung" ? "lieferung" : "abholung");
+let deliveryOn = IH.store.get("ih-deliv") !== "0";   // switched in the Dashboard, live
+let otype = tableNo ? "tisch" : (store.get("ih-otype") === "lieferung" && deliveryOn ? "lieferung" : "abholung");
+const orderTypes = () => (tableNo ? ["tisch"] : []).concat(deliveryOn ? ["abholung","lieferung"] : ["abholung"]);
+async function loadSettings(){
+  if (!sb) return;
+  try{
+    const { data } = await sb.from("settings").select("key,value").eq("key", "delivery_enabled").maybeSingle();
+    if (data) applyDelivery(data.value !== false);
+  }catch(e){}
+}
+function applyDelivery(on){
+  const changed = on !== deliveryOn;
+  deliveryOn = on; IH.store.set("ih-deliv", on ? "1" : "0");
+  if (!on && otype === "lieferung") otype = "abholung";
+  if (changed){ renderChrome(); renderMenu(false); if (sheetMode === "cart") renderCart(); }
+}
 let cats = [];            // [{id,names,is_drink,items:[{id,names,descs,pp,pd,tag,available}]}]
 let online = false;
 let cart = {};            // id -> qty
@@ -431,7 +451,8 @@ function renderChrome(){
   document.documentElement.lang = lang;
   $("fWhere").textContent = tr("where");
   $("fOrder").textContent = tr("orderAlt");
-  $("fOrderTx").textContent = tr("orderTx2");
+  $("fOrderTx").textContent = deliveryOn ? tr("orderTx2") : tr("delivOff");
+  $("fOrder").closest("li").classList.toggle("off", !deliveryOn);
   $("fFresh").textContent = tr("fresh");
   $("hbLbl").textContent = tr("hours") + ":";
   $("hbMf").textContent = tr("monfriL");
@@ -442,7 +463,7 @@ function renderChrome(){
   $("tableBadge").hidden = !tableNo;
   $("tableBadge").textContent = tr("table", {n: tableNo});
   $("langs").innerHTML = LANGS.map(l => `<a class="lang" href="#${l}" aria-current="${l===lang}">${LANG_NAMES[l]}</a>`).join("");
-  const types = (tableNo ? ["tisch"] : []).concat(["abholung","lieferung"]);
+  const types = orderTypes();
   $("otype").innerHTML = types.map(t => `<button type="button" data-t="${t}" aria-pressed="${otype===t}">${esc(t==="tisch" ? tr("table",{n:tableNo}) : t==="abholung" ? tr("pickup") : tr("deliv"))}</button>`).join("");
   $("otype").querySelectorAll("button").forEach(b => b.onclick = () => setType(b.dataset.t));
   requestAnimationFrame(() => IH.seg($("otype")));
@@ -532,7 +553,7 @@ const form = {name: store.get("ih-name") || "", phone: store.get("ih-phone") || 
 
 function renderCart(errMsg){
   const lines = cartLines();
-  const types = (tableNo ? ["tisch"] : []).concat(["abholung","lieferung"]);
+  const types = orderTypes();
   let h = `<h2 id="sheetTitle">${esc(tr("cart"))}<button type="button" class="x" id="xBtn" aria-label="${esc(tr("close"))}">×</button></h2>`;
   if (!lines.length){
     h += `<p class="hint">${esc(tr("empty"))}</p>`;
@@ -603,6 +624,7 @@ async function submitOrder(){
     if (onlinePay && payChoice === "online") await startCheckout(mine);
     else showOrder(mine);
   }catch(e){
+    if (e && /Lieferung ist gerade nicht/.test(e.message || "")){ applyDelivery(false); renderCart(tr("delivOff")); return; }
     renderCart(tr("orderFail") + (e && e.message ? " " + e.message : ""));
   }
 }
@@ -839,13 +861,16 @@ addEventListener("hashchange", () => route(true));
   IH.splash("../assets/logo.jpg", "Tantuni & Burger");
   renderChrome();
   $("menu").innerHTML = `<div class="skeleton skel h"></div>` + Array.from({length:5}, () => `<div class="skeleton skel"></div>`).join("");
-  const loaded = loadMenu();
+  const loaded = Promise.all([loadMenu(), loadSettings()]);
   const quick = await Promise.race([loaded.then(() => true), new Promise(r => setTimeout(() => r(false), 4000))]);
   if (!quick){ cats = window.IH_FALLBACK_MENU || []; route(true); await loaded; route(false); }
   else route(true);
   // live menu: sold-out switches and prices update without reload
   if (sb && online){
-    sb.channel("menu").on("postgres_changes", {event:"*", schema:"public", table:"menu_items"}, async () => { await loadMenu(); route(false); }).subscribe();
+    sb.channel("menu").on("postgres_changes", {event:"*", schema:"public", table:"menu_items"}, async () => { await loadMenu(); route(false); })
+      .on("postgres_changes", {event:"*", schema:"public", table:"settings"}, p => { if (p.new && p.new.key === "delivery_enabled") applyDelivery(p.new.value !== false); })
+      .subscribe();
+    setInterval(loadSettings, 60000);
   }
   await checkOnlinePay();
   const back = params.get("bezahlt") || params.get("abbruch");
