@@ -1,6 +1,6 @@
 /* Imbiss – service worker for all apps (scope = project root).
    Bump VERSION after changing files so installed apps update. */
-const VERSION = "imbiss-v3";
+const VERSION = "imbiss-v4";
 const CORE = [
   "kunde/", "kunde/index.html", "kunde/manifest.webmanifest",
   "kasse/", "kasse/index.html", "kasse/manifest.webmanifest",

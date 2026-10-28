@@ -16,6 +16,7 @@ Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-
 ## Ablauf einer Bestellung
 
 1. **Kunde** bestellt per QR-Code (Tisch, Abholung oder Lieferung) und zahlt entweder online (Karte, PayPal, Apple/Google Pay) oder bar.
+   Tisch-QR: die Bestellung läuft über die Tischnummer. Abholung/Lieferung: der Gast bekommt einen **4-stelligen Abholcode**, den er an der Kasse nennt (Kasse → Feld „Code“ findet die Bestellung sofort).
 2. **Kasse**: Bar- und Kartenzahlungen mit einem Tipp bestätigen. Online bezahlte Bestellungen springen automatisch weiter.
 3. **Küche** sieht nur bezahlte Bestellungen, mit Eingangston. *Start* → *Fertig*.
 4. „Fertig“ löst einen Alarm aus: beim Gast auf dem Handy, an der Kasse und groß auf der **Abhol-Anzeige** mit Tischnummer.

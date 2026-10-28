@@ -36,6 +36,7 @@ body{font-size:18px}
 .card.zubereitung .c-head::after{content:"";position:absolute}
 .c-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;position:relative}
 .c-no{font-family:var(--display);font-size:38px;line-height:1}
+.c-code{display:inline-block;background:var(--kraft);color:var(--kraft-ink);border-radius:10px;padding:2px 10px;font-size:34px;letter-spacing:.05em}
 .c-where{font-family:var(--label);font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.03em}
 .c-min{margin-left:auto;font-family:var(--label);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
 .card.late .c-min{color:var(--bad);animation:latePulse 1.4s ease-in-out infinite}
@@ -155,7 +156,7 @@ function render(fresh = []){
       const items = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? `<em>${esc(i.note)}</em>` : ""}</span></li>`).join("");
       const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung bei Lieferung" : o.payment === "online" ? "Online bezahlt" : ""].filter(Boolean).join(" · ");
       return `<article class="card ${o.status}${late ? " late" : ""}${fresh.includes(o.id) ? " fresh" : ""}" data-k="o${o.id}">
-        <div class="c-head"><span class="c-no">#${o.id}</span><span class="c-where">${where(o)}</span><span class="c-min">${m} min</span></div>
+        <div class="c-head"><span class="c-no">${o.pickup_code ? `<span class="c-code">${o.pickup_code}</span>` : "#" + o.id}</span><span class="c-where">${where(o)}</span><span class="c-min">${m} min</span></div>
         <div class="c-progress"><i style="--w:${Math.min(100, m / TARGET * 100)}%"></i></div>
         ${sub ? `<div class="c-sub">${sub}</div>` : ""}
         <ul class="c-items">${items}</ul>
@@ -167,7 +168,7 @@ function render(fresh = []){
     }).join("") : `<div class="empty"><svg viewBox="0 0 64 64"><path d="M14 30a18 18 0 0 1 36 0v14H14z"/><path d="M8 50h48M32 8v6"/></svg>Keine offenen Bestellungen</div>`;
   });
   IH.flip($("ready"), () => {
-    $("ready").innerHTML = ready.length ? ready.map(o => `<div class="ready" data-k="r${o.id}"><b>#${o.id}</b><span>${where(o)}</span><button type="button" data-to="zubereitung" data-id="${o.id}">Zurück</button></div>`).join("")
+    $("ready").innerHTML = ready.length ? ready.map(o => `<div class="ready" data-k="r${o.id}"><b>${o.pickup_code || "#" + o.id}</b><span>${where(o)}</span><button type="button" data-to="zubereitung" data-id="${o.id}">Zurück</button></div>`).join("")
       : `<p>Noch nichts fertig.</p>`;
   });
   document.querySelectorAll("[data-to]").forEach(b => b.onclick = () => setStatus(+b.dataset.id, b.dataset.to, b));

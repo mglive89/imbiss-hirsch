@@ -172,6 +172,11 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 .ratebox .gbtn{background:#fff;color:#1f1f1f;border-color:#fff;gap:10px}
 .ratebox .gbtn svg{width:20px;height:20px}
 .ratebox .link{background:transparent;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:15px;padding:6px}
+.codebox{display:flex;flex-direction:column;align-items:center;gap:6px;margin:8px 0 2px}
+.code{display:flex;gap:8px}
+.code b{display:grid;place-items:center;width:58px;height:72px;border-radius:12px;background:var(--kraft);color:var(--kraft-ink);font-family:var(--display);font-size:44px;line-height:1;box-shadow:0 8px 24px rgba(201,162,116,.25)}
+.codebox.pop .code b{animation:popIn .55s var(--spring) both;animation-delay:calc(var(--i) * 90ms + .1s)}
+.codehint{font-family:var(--label);font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.04em;color:var(--fg)}
 .stline{font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;letter-spacing:.03em;margin:6px 0 0;min-height:1.4em}
 .stline.cancel{color:var(--bad)}
 @media (prefers-reduced-motion:no-preference){
@@ -340,6 +345,9 @@ const T = {
   rateGoogleAsk:["Hilf anderen Gästen: Teile deine Meinung auch auf Google. Das dauert nur eine Minute.","Help other guests: share your opinion on Google too. It only takes a minute.","Aiuta altri clienti: lascia la tua opinione anche su Google. Ci vuole un minuto.","Diğer misafirlere yardım edin: görüşünüzü Google'da da paylaşın. Sadece bir dakika sürer.","Aidez d'autres clients : partagez votre avis sur Google. Une minute suffit."],
   rateGoogle:["Auf Google bewerten","Review us on Google","Recensiscici su Google","Google'da değerlendirin","Laisser un avis Google"],
   rateDone:["Fertig","Done","Fatto","Tamam","Terminé"],
+  yourCode:["Dein Abholcode","Your pickup code","Il tuo codice","Teslim kodunuz","Votre code"],
+  codeHint:["Nenne diesen Code an der Kasse","Tell this code at the counter","Comunica questo codice alla cassa","Bu kodu kasada söyleyin","Donnez ce code au comptoir"],
+  codeShort:["Code","Code","Codice","Kod","Code"],
   okComing:["OK, ich komme","OK, on my way","OK, arrivo","Tamam, geliyorum","OK, j'arrive"],
   stepOrdered:["Bestellt","Ordered","Ordinato","Sipariş","Commandé"],
   stepPaid:["Bezahlt","Paid","Pagato","Ödendi","Payé"],
@@ -589,7 +597,7 @@ async function submitOrder(){
     if (error) throw error;
     store.set("ih-name", form.name); store.set("ih-phone", form.phone); store.set("ih-address", form.address);
     form.note = ""; cart = {}; saveCart();
-    const mine = {id: data.id, token: data.token, channel: otype, at: Date.now()};
+    const mine = {id: data.id, token: data.token, channel: otype, code: data.code || null, at: Date.now()};
     store.set("ih-last-order", JSON.stringify(mine));
     renderMenu(false);
     if (onlinePay && payChoice === "online") await startCheckout(mine);
@@ -631,7 +639,7 @@ let pollTimer = null, readyRepeat = null;
 function showOrder(o, msg){
   openSheet("order");
   $("sheetBody").innerHTML = `<h2 id="sheetTitle">${esc(tr("myOrder"))}<button type="button" class="x" id="xBtn" aria-label="${esc(tr("close"))}">×</button></h2>
-    <div class="done"><div class="lbl">${esc(tr("thanks"))}</div><div class="big num pop">#${o.id}</div>
+    <div class="done"><div class="lbl">${esc(tr("thanks"))}</div>${o.code ? `<div class="codebox pop"><span class="lbl">${esc(tr("yourCode"))}</span><div class="code num" aria-label="${esc(o.code.split("").join(" "))}">${o.code.split("").map((d, i) => `<b style="--i:${i}">${d}</b>`).join("")}</div><span class="codehint">${esc(tr("codeHint"))}</span><small class="muted">#${o.id}</small></div>` : `<div class="big num pop">#${o.id}</div>`}
     <ol class="stepper" id="stepper">${["stepOrdered","stepPaid","stepKitchen","stepReady"].map(k => `<li><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>${esc(tr(k))}</span></li>`).join("")}</ol>
     <p class="stline" id="steps" aria-live="polite"></p>${msg ? `<p class="err" style="margin-top:12px">${esc(msg)}</p>` : ""}
     <div id="payArea"></div>
@@ -652,6 +660,7 @@ async function pollStatus(o){
   try{
     const { data } = await sb.rpc("order_status", {p_id: o.id, p_token: o.token});
     st = data && data.status; pay = (data && data.payment) || "offen";
+    if (data && data.code && !o.code) o.code = data.code;
   }catch(e){}
   if (st){
     const prev = o.lastSt; o.lastSt = st; o.pay = pay;
@@ -699,7 +708,7 @@ function readyAlarm(o){
   if (window.IHSound) IHSound.ready();
   let n = 0; clearInterval(readyRepeat);
   readyRepeat = setInterval(() => { if (++n >= 3 || !$("readyOv").classList.contains("open")){ clearInterval(readyRepeat); return; } if (window.IHSound) IHSound.ready(); }, 12000);
-  $("readyNo").textContent = "#" + o.id;
+  $("readyNo").textContent = o.code ? o.code : "#" + o.id;
   $("readyTitle").textContent = tr("readyTitle");
   $("readyTx").textContent = (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick")) + (o.channel === "tisch" && tableNo ? " · " + tr("table", {n: tableNo}) : "");
   $("readyOk").textContent = tr("okComing");
@@ -718,7 +727,7 @@ function showRating(o){
   if ($("readyOv").classList.contains("open")){ IH.close($("readyOv")); clearInterval(readyRepeat); }
   renderTrack(null);
   $("rateBox").innerHTML = `<h2 id="rateTitle">${esc(tr("rateTitle"))}</h2>
-    <p>${esc(tr("rateSub", {n: o.id}))}</p>
+    <p>${esc(tr("rateSub", {n: o.code || o.id}))}</p>
     <div class="stars" id="stars" role="radiogroup" aria-label="${esc(tr("rateHint"))}">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" aria-label="${k}" data-r="${k}" style="--i:${k-1}">${STAR}</button>`).join("")}</div>
     <div class="ratelbl" id="rateLbl">${esc(tr("rateHint"))}</div>
     <textarea id="rateTx" rows="3" maxlength="1000" placeholder="${esc(tr("rateComment"))}"></textarea>
@@ -765,7 +774,7 @@ function renderTrack(o, st){
   b.hidden = false; b.className = "pill track " + st;
   b.style.background = "var(--surface)";
   const short = st === "neu" ? (o.pay && o.pay !== "offen" ? tr("st_paid") : (o.channel === "lieferung" ? tr("st_neu") : tr("payFirst"))) : tr("st_" + st);
-  b.textContent = "#" + o.id + " · " + short.split(" –")[0];
+  b.textContent = (o.code ? tr("codeShort") + " " + o.code : "#" + o.id) + " · " + short.split(" –")[0];
   b.onclick = () => showOrder(o);
 }
 

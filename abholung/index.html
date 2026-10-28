@@ -98,15 +98,15 @@ async function load(){
   known = new Set(ready.map(o => o.id));
   // numbers keep the same key in both columns, so a finished order glides from left to right
   IH.flip($("cols"), () => {
-    $("prep").innerHTML = prep.length ? prep.map(o => `<div class="n" data-k="n${o.id}">${o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
-    $("ready").innerHTML = ready.length ? ready.slice().reverse().map(o => `<div class="n${freshUntil[o.id] > Date.now() ? " fresh" : ""}" data-k="n${o.id}">${o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
+    $("prep").innerHTML = prep.length ? prep.map(o => `<div class="n" data-k="n${o.id}">${o.code || o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
+    $("ready").innerHTML = ready.length ? ready.slice().reverse().map(o => `<div class="n${freshUntil[o.id] > Date.now() ? " fresh" : ""}" data-k="n${o.id}">${o.code || o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
   });
   if (fresh.length) announce(fresh[fresh.length - 1]);
 }
 let bigT;
 function announce(o){
   IH.sound.ready();
-  $("bigNo").textContent = o.id; $("bigTx").textContent = label(o).replace(/<[^>]+>/g, "");
+  $("bigNo").textContent = o.code || o.id; $("bigTx").textContent = label(o).replace(/<[^>]+>/g, "");
   $("big").classList.add("show");
   setTimeout(() => IH.burst(innerWidth / 2, innerHeight / 2), 300);
   clearTimeout(bigT); bigT = setTimeout(() => $("big").classList.remove("show"), 4200);

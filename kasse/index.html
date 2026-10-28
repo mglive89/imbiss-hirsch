@@ -32,6 +32,14 @@
 .ticket.zubereitung{border-left-color:var(--warn)}
 .ticket.fertig{border-left-color:var(--ok)}
 .ticket.fresh{animation:glow 1.2s ease-in-out 4}
+.ticket.found{animation:found 1s ease-in-out 3;border-color:var(--kraft)}
+@keyframes found{50%{box-shadow:0 0 0 5px rgba(201,162,116,.55);transform:scale(1.02)}}
+.t-code{font-family:var(--display);font-size:22px;line-height:1;background:var(--kraft);color:var(--kraft-ink);border-radius:8px;padding:4px 8px;letter-spacing:.06em}
+.codefind{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 10px;transition:border-color .2s,box-shadow .2s}
+.codefind:focus-within{border-color:var(--kraft);box-shadow:0 0 0 3px rgba(201,162,116,.15)}
+.codefind svg{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round}
+.codefind input{border:0;background:transparent;width:6.5ch;padding:9px 0;font-family:var(--display);font-size:20px;letter-spacing:.15em;box-shadow:none}
+.codefind input:focus{box-shadow:none}
 .t-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .t-no{font-family:var(--display);font-size:24px;line-height:1}
 .t-where{font-family:var(--label);font-weight:700;font-size:19px;text-transform:uppercase;letter-spacing:.03em}
@@ -104,7 +112,9 @@
 
   <main class="content"><div class="inner">
     <section id="v-kasse">
-      <h2 class="view">Bestellungen<span class="sp"></span><a class="btn" href="../kueche/" target="_blank" rel="noopener">Küche öffnen</a></h2>
+      <h2 class="view">Bestellungen<span class="sp"></span>
+        <label class="codefind" for="codeIn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="codeIn" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Code" autocomplete="off" aria-label="Abholcode eingeben"></label>
+        <a class="btn" href="../kueche/" target="_blank" rel="noopener">Küche öffnen</a></h2>
       <div class="board" id="board"></div>
       <details class="done-list" id="doneWrap"><summary id="doneSum">Heute erledigt</summary><div class="dl" id="doneList"></div></details>
     </section>
@@ -248,7 +258,7 @@ function ticket(o, fresh){
   const payPill = paid ? `<span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : "";
   const cookPill = paid && o.status === "zubereitung" ? `<span class="pill zubereitung">Wird zubereitet</span>` : "";
   return `<article class="ticket ${paid ? o.status : "neu"}${fresh ? " fresh" : ""}" data-k="o${o.id}">
-    <div class="t-head"><span class="t-no">#${o.id}</span><span class="t-where">${where(o)}</span>
+    <div class="t-head">${o.pickup_code ? `<span class="t-code" title="Abholcode">${o.pickup_code}</span>` : ""}<span class="t-no"${o.pickup_code ? ' style="font-size:16px;color:var(--muted)"' : ""}>#${o.id}</span><span class="t-where">${where(o)}</span>
       <span class="t-time${late ? " late" : ""}" title="eingegangen ${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(ref)} min</span></div>
     <div class="t-meta">${meta.join(" · ")} ${payPill} ${cookPill}</div>
     <ul class="t-items">${lines}</ul>
@@ -309,6 +319,19 @@ async function setStatus(id, status){
   if (error){ IH.toast("Status konnte nicht gespeichert werden", "err"); loadOrders(); }
 }
 setInterval(() => { if (current === "kasse" && staff) renderBoard(); }, 60000);
+
+/* ---------- find an order by pickup code ---------- */
+$("codeIn").addEventListener("input", (e) => {
+  const v = e.target.value.replace(/\D/g, "").slice(0, 4); e.target.value = v;
+  if (v.length < 4) return;
+  const o = orders.filter(x => x.pickup_code === v && x.status !== "storniert").sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  if (!o){ IH.toast(`Kein Auftrag mit Code ${v}`, "err"); IH.bump(e.target.parentElement); return; }
+  if (o.status === "abgeschlossen"){ IH.toast(`Code ${v}: #${o.id} ist schon ausgegeben`); return; }
+  const el = document.querySelector(`[data-k="o${o.id}"]`);
+  if (el){ el.scrollIntoView({ behavior: IH.reduced ? "auto" : "smooth", block: "center" }); el.classList.remove("found"); void el.offsetWidth; el.classList.add("found"); }
+  IH.toast(`Code ${v} → #${o.id} · ${o.payment === "offen" ? "noch zu bezahlen" : o.status === "fertig" ? "fertig zur Ausgabe" : "in der Küche"}`);
+  IH.sound.tap(); e.target.value = ""; 
+});
 
 /* ========== NEW ORDER (phone / WhatsApp / counter) ========== */
 const nd = { cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", payment: "offen", table: "", name: "", phone: "", address: "", note: "", err: "" };
@@ -376,7 +399,7 @@ async function ndSend(){
   const { data, error } = await sb.rpc("place_order", { p });
   if (error){ nd.err = error.message; renderNew(); return; }
   const r = btn.getBoundingClientRect(); IH.burst(r.left + r.width / 2, r.top);
-  IH.toast(`Bestellung #${data.id} angelegt`);
+  IH.toast(data.code ? `Bestellung #${data.id} angelegt · Code ${data.code}` : `Bestellung #${data.id} angelegt`);
   Object.assign(nd, { cart: {}, table: "", name: "", phone: "", address: "", note: "", err: "", payment: nd.channel === "lieferung" ? "bei_lieferung" : "offen" });
   renderNew(); loadOrders();
 }

@@ -254,7 +254,7 @@ async function renderStats(animate){
     wireDay();
   }
   const from = IH.dayRange(IH.addDays(statsDay, -6))[0], to = IH.dayRange(statsDay)[1];
-  const { data, error } = await sb.from("orders").select("id,created_at,total,status,channel,source,payment,pay_method,customer_name,table_no,order_items(name_de,qty,unit_price)")
+  const { data, error } = await sb.from("orders").select("id,created_at,total,status,channel,source,payment,pay_method,customer_name,table_no,pickup_code,order_items(name_de,qty,unit_price)")
     .gte("created_at", from).lt("created_at", to).order("created_at");
   if (error){ V.innerHTML = head(isToday) + `<div class="empty">Konnte nicht geladen werden.</div>`; wireDay(); return; }
   const dayOf = o => { const p = IH.berlinParts(new Date(o.created_at)); return `${p.year}-${p.month}-${p.day}`; };
@@ -296,7 +296,7 @@ async function renderStats(animate){
       <div><div class="lbl" style="margin-bottom:8px">Bestellart</div>${split(chSplit, x => x)}</div>
       <div><div class="lbl" style="margin-bottom:8px">Zahlung</div>${split(paySplit, eur)}</div></div></div>
   </div>
-  <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : ""}</span><span class="pill ${o.status} hide-s">${ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
+  <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)}${o.pickup_code ? " · Code " + o.pickup_code : ""} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : ""}</span><span class="pill ${o.status} hide-s">${ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
   wireDay();
   const num = x => Math.round(x);
   IH.countUp($("k-rev"), rev, eur, animate ? 0 : prevKpi.rev);

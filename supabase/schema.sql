@@ -259,3 +259,23 @@ end $$;
 revoke execute on function public.submit_feedback(bigint, uuid, int, text, text, boolean) from public;
 grant execute on function public.submit_feedback(bigint, uuid, int, text, text, boolean) to anon, authenticated;
 alter publication supabase_realtime add table public.feedback;
+
+-- ---------- Abholcode (4 Ziffern) für Bestellungen ohne Tisch ----------
+-- place_order vergibt ihn automatisch (siehe Migration "pickup_code"), order_status und ready_board liefern ihn mit.
+alter table public.orders add column if not exists pickup_code text;
+create index if not exists orders_pickup_code_idx on public.orders(pickup_code) where pickup_code is not null;
+create or replace function public.new_pickup_code() returns text
+language plpgsql security definer set search_path = '' as $$
+declare c text; n int := 0;
+begin
+  loop
+    c := (1000 + floor(random() * 9000))::int::text;
+    exit when not exists (select 1 from public.orders o where o.pickup_code = c
+      and (o.status in ('neu','zubereitung','fertig') or o.created_at > now() - interval '24 hours'));
+    n := n + 1; if n > 50 then exit; end if;
+  end loop;
+  return c;
+end $$;
+revoke execute on function public.new_pickup_code() from public, anon, authenticated;
+-- In place_order: vor dem INSERT  "if v_channel <> 'tisch' then v_code := public.new_pickup_code(); end if;"
+-- und pickup_code = v_code speichern; Rückgabe enthält 'code'.
