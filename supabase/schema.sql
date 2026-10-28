@@ -305,3 +305,24 @@ begin
 end $$;
 revoke execute on function public.guard_delivery() from public, anon, authenticated;
 create trigger t_orders_delivery before insert on public.orders for each row execute function public.guard_delivery();
+
+-- ---------- Lieferablauf: Wartezeit, unterwegs, zugestellt ----------
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders add constraint orders_status_check check (status in ('neu','zubereitung','fertig','unterwegs','abgeschlossen','storniert'));
+alter table public.orders
+  add column if not exists eta_minutes int check (eta_minutes between 5 and 180),
+  add column if not exists eta_at timestamptz,
+  add column if not exists out_at timestamptz,
+  add column if not exists delivered_at timestamptz,
+  add column if not exists driver_email text;
+create or replace function public.stamp_delivery() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.status = 'unterwegs' and old.status is distinct from 'unterwegs' then new.out_at := now(); end if;
+  if new.status = 'abgeschlossen' and old.status is distinct from 'abgeschlossen' and new.channel = 'lieferung' then new.delivered_at := now(); end if;
+  if new.eta_minutes is distinct from old.eta_minutes and new.eta_minutes is not null then new.eta_at := now() + make_interval(mins => new.eta_minutes); end if;
+  return new;
+end $$;
+revoke execute on function public.stamp_delivery() from public, anon, authenticated;
+create trigger t_orders_delivery_stamp before update on public.orders for each row execute function public.stamp_delivery();
+-- order_status liefert zusätzlich eta_at, eta_minutes, out_at, delivered_at

@@ -353,6 +353,12 @@ const T = {
   codeHint:["Nenne diesen Code an der Kasse","Tell this code at the counter","Comunica questo codice alla cassa","Bu kodu kasada söyleyin","Donnez ce code au comptoir"],
   codeShort:["Code","Code","Codice","Kod","Code"],
   delivOff:["Lieferung gerade pausiert – Abholen geht","Delivery paused right now – pick-up available","Consegna in pausa – puoi ritirare","Paket servis şu an kapalı – gel-al mümkün","Livraison en pause – à emporter possible"],
+  stepOnWay:["Unterwegs","On the way","In viaggio","Yolda","En route"],
+  st_unterwegs:["Unterwegs zu dir","On its way to you","In arrivo da te","Size doğru yolda","En route vers vous"],
+  onWayTitle:["Unterwegs!","On its way!","In arrivo!","Yolda!","En route !"],
+  onWayTx:["Dein Essen ist auf dem Weg zu dir","Your food is on its way","Il tuo cibo sta arrivando","Yemeğiniz yolda","Votre repas arrive"],
+  etaAt:["Lieferung ca. {t} Uhr","Delivery around {t}","Consegna verso le {t}","Teslimat yaklaşık {t}","Livraison vers {t}"],
+  okThanks:["Super, danke","Great, thanks","Perfetto, grazie","Harika, teşekkürler","Super, merci"],
   okComing:["OK, ich komme","OK, on my way","OK, arrivo","Tamam, geliyorum","OK, j'arrive"],
   stepOrdered:["Bestellt","Ordered","Ordinato","Sipariş","Commandé"],
   stepPaid:["Bezahlt","Paid","Pagato","Ödendi","Payé"],
@@ -662,7 +668,7 @@ function showOrder(o, msg){
   openSheet("order");
   $("sheetBody").innerHTML = `<h2 id="sheetTitle">${esc(tr("myOrder"))}<button type="button" class="x" id="xBtn" aria-label="${esc(tr("close"))}">×</button></h2>
     <div class="done"><div class="lbl">${esc(tr("thanks"))}</div>${o.code ? `<div class="codebox pop"><span class="lbl">${esc(tr("yourCode"))}</span><div class="code num" aria-label="${esc(o.code.split("").join(" "))}">${o.code.split("").map((d, i) => `<b style="--i:${i}">${d}</b>`).join("")}</div><span class="codehint">${esc(tr("codeHint"))}</span><small class="muted">#${o.id}</small></div>` : `<div class="big num pop">#${o.id}</div>`}
-    <ol class="stepper" id="stepper">${["stepOrdered","stepPaid","stepKitchen","stepReady"].map(k => `<li><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>${esc(tr(k))}</span></li>`).join("")}</ol>
+    <ol class="stepper" id="stepper">${["stepOrdered","stepPaid","stepKitchen", o.channel === "lieferung" ? "stepOnWay" : "stepReady"].map(k => `<li><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>${esc(tr(k))}</span></li>`).join("")}</ol>
     <p class="stline" id="steps" aria-live="polite"></p>${msg ? `<p class="err" style="margin-top:12px">${esc(msg)}</p>` : ""}
     <div id="payArea"></div>
     <p class="hint" style="margin-top:14px">${esc(tr("keepOpen"))}</p></div>
@@ -682,19 +688,23 @@ async function pollStatus(o){
   try{
     const { data } = await sb.rpc("order_status", {p_id: o.id, p_token: o.token});
     st = data && data.status; pay = (data && data.payment) || "offen";
+    if (data){ o.eta_at = data.eta_at || null; }
     if (data && data.code && !o.code) o.code = data.code;
   }catch(e){}
   if (st){
     const prev = o.lastSt; o.lastSt = st; o.pay = pay;
     store.set("ih-last-order", JSON.stringify(o));
     renderTrack(o, st);
-    if (st === "fertig" && prev && prev !== "fertig") readyAlarm(o);
+    if (o.channel !== "lieferung" && st === "fertig" && prev && prev !== "fertig") readyAlarm(o);
+    if (o.channel === "lieferung" && st === "unterwegs" && prev && prev !== "unterwegs") onWayAlarm(o);
     const el = $("steps");
     if (el && sheetMode === "order"){
-      const label = st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
+      const label = st === "unterwegs" ? tr("st_unterwegs") : st === "fertig" ? (o.channel === "lieferung" ? tr("readyDeliv") : tr("readyPick"))
         : st === "neu" ? (pay === "offen" ? (o.justPaid ? tr("payWait") : o.channel === "lieferung" ? tr("st_neu") : tr("payFirst")) : tr("st_paid"))
         : tr("st_" + st);
-      el.textContent = label;
+      const eta = o.channel === "lieferung" && o.eta_at && ["neu","zubereitung","fertig","unterwegs"].includes(st)
+        ? " · " + tr("etaAt", {t: new Intl.DateTimeFormat(LOCALE[lang], {timeZone:"Europe/Berlin", hour:"2-digit", minute:"2-digit"}).format(new Date(o.eta_at))}) : "";
+      el.textContent = label + eta;
       el.classList.toggle("cancel", st === "storniert");
       paintStepper(st, pay);
       const pa = $("payArea");
@@ -717,14 +727,25 @@ async function pollStatus(o){
 function paintStepper(st, pay){
   const sp = $("stepper"); if (!sp) return;
   const paid = pay && pay !== "offen";
-  const cur = (st === "fertig" || st === "abgeschlossen") ? 4 : (st === "zubereitung" || paid) ? 2 : 1;
-  sp.style.setProperty("--p", cur >= 4 ? 1 : (cur - 1 + (st === "zubereitung" ? 0.5 : 0)) / 3);
+  const deliv = lastOrderChannel() === "lieferung";
+  const cur = st === "abgeschlossen" ? 4 : st === "unterwegs" ? 3 : st === "fertig" ? (deliv ? 3 : 4) : (st === "zubereitung" || paid) ? 2 : 1;
+  sp.style.setProperty("--p", cur >= 4 ? 1 : (cur - 1 + (st === "zubereitung" || st === "unterwegs" ? 0.5 : 0)) / 3);
   [...sp.children].forEach((li, i) => {
     const wasDone = li.classList.contains("done");
     li.classList.toggle("done", i < cur);
     li.classList.toggle("cur", i === cur && st !== "storniert");
     if (!wasDone && i < cur && !IH.reduced) li.querySelector("i").animate([{transform:"scale(.6)"},{transform:"scale(1.2)"},{transform:"scale(1)"}], {duration:450, easing:"cubic-bezier(.34,1.56,.64,1)", delay: i * 120});
   });
+}
+function lastOrderChannel(){ try{ return (JSON.parse(store.get("ih-last-order") || "{}").channel) || ""; }catch(e){ return ""; } }
+function onWayAlarm(o){
+  if (window.IHSound) IHSound.received();
+  $("readyNo").textContent = o.code ? o.code : "#" + o.id;
+  $("readyTitle").textContent = tr("onWayTitle");
+  $("readyTx").textContent = tr("onWayTx") + (o.eta_at ? " · " + tr("etaAt", {t: new Intl.DateTimeFormat(LOCALE[lang], {timeZone:"Europe/Berlin", hour:"2-digit", minute:"2-digit"}).format(new Date(o.eta_at))}) : "");
+  $("readyOk").textContent = tr("okThanks");
+  IH.open($("readyOv"));
+  setTimeout(() => { const r = $("readyNo").getBoundingClientRect(); IH.burst(r.left + r.width/2, r.top + r.height/2); }, 250);
 }
 function readyAlarm(o){
   if (window.IHSound) IHSound.ready();

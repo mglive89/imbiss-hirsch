@@ -36,7 +36,13 @@
   IH.client = (opts) => window.supabase.createClient(IH_CONFIG.url, IH_CONFIG.key, opts);
   IH.CH = { tisch: "Tisch", abholung: "Abholung", lieferung: "Lieferung" };
   IH.SRC = { qr: "QR", telefon: "Telefon", whatsapp: "WhatsApp", theke: "Theke" };
-  IH.ST = { neu: "Neu", zubereitung: "In Zubereitung", fertig: "Fertig", abgeschlossen: "Abgeschlossen", storniert: "Storniert" };
+  IH.ST = { neu: "Neu", zubereitung: "In Zubereitung", fertig: "Fertig", unterwegs: "Unterwegs", abgeschlossen: "Abgeschlossen", storniert: "Storniert" };
+  IH.mapsUrl = (addr) => "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" + encodeURIComponent(addr || "");
+  IH.etaText = (o) => {
+    if (!o.eta_at) return "";
+    const left = Math.round((new Date(o.eta_at).getTime() - Date.now()) / 60000);
+    return `bis ${IH.hhmm(o.eta_at)} · ${left >= 0 ? "noch " + left + " min" : Math.abs(left) + " min drüber"}`;
+  };
   IH.PAY = { offen: "Offen", bar: "Bar bezahlt", karte: "Karte bezahlt", bei_lieferung: "Zahlung bei Lieferung", online: "Online bezahlt" };
   IH.PM = { card: "Karte", paypal: "PayPal", apple_pay: "Apple Pay", google_pay: "Google Pay" };
   IH.where = (o) => (o.channel === "tisch" ? `Tisch ${IH.esc(o.table_no)}` : o.channel === "abholung" ? "Abholung" : "Lieferung");

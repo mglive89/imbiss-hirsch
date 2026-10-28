@@ -10,6 +10,7 @@ Fünf Web-Apps (PWA) auf einer gemeinsamen Datenbank (Supabase). Jede App lässt
 | **Dashboard** | `dashboard/` | Laptop / Tablet des Chefs | Personal |
 | **Küche** | `kueche/` | Tablet oder TV in der Küche | Personal |
 | **Abholung** | `abholung/` | TV im Gastraum | – |
+| **Fahrer** | `fahrer/` | Handy der Lieferfahrer | Personal |
 
 Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-App weiter).
 
@@ -21,6 +22,7 @@ Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-
 3. **Küche** sieht nur bezahlte Bestellungen, mit Eingangston. *Start* → *Fertig*.
 4. „Fertig“ löst einen Alarm aus: beim Gast auf dem Handy, an der Kasse und groß auf der **Abhol-Anzeige** mit Tischnummer.
 5. **Kasse** gibt aus → abgeschlossen. Das **Dashboard** zählt live mit.
+   **Lieferungen**: Kasse setzt die Wartezeit (30 / 45 / 60 min) → der Gast sieht „Lieferung ca. 13:45 Uhr“. Sobald die Küche „Fertig“ drückt, erscheint die Lieferung in der **Fahrer-App** (mit Ton): Adresse, Telefon, Betrag. „Losfahren“ öffnet Google Maps und meldet dem Gast „Unterwegs“. An der Tür: „Bar kassiert“ / „Karte kassiert“ bzw. „Zugestellt“ → Dashboard zeigt „Zugestellt 14:02 · pünktlich“.
    **Lieferservice an/aus**: Dashboard → Übersicht → Schalter „Lieferservice“. Aus = Gäste sehen nur Abholen und Tisch (sofort, ohne Neuladen); an der Kasse kann das Personal trotzdem Lieferungen eintragen.
 6. Nach dem Abholen fragt die **Kunden-App** nach 1–5 Sternen und einem Kommentar und bietet danach **allen** Gästen den Link zur Google-Bewertung an (Google erlaubt nicht, nur zufriedene Gäste weiterzuleiten). Auswertung: **Dashboard → Bewertungen**. Der Google-Link steht in `shared/config.js`.
 
@@ -28,7 +30,7 @@ Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-
 
 ```
 Imbiss/
-├─ kunde/ kasse/ dashboard/ kueche/ abholung/   je index.html + manifest.webmanifest
+├─ kunde/ kasse/ dashboard/ kueche/ abholung/ fahrer/   je index.html + manifest.webmanifest
 ├─ shared/
 │  ├─ ih.css        Design-System + Animationen
 │  ├─ ih.js         Kern: Supabase, Töne, Zoom-Sperre, Animationen (FLIP, Konfetti, Zähler …)

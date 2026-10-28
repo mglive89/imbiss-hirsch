@@ -73,6 +73,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--kraft);outline:none;b
 .pill.zubereitung{color:var(--warn);border-color:#6b5524}
 .pill.fertig{color:var(--ok);border-color:#3e5f2f}
 .pill.storniert{color:var(--bad);border-color:#5a2f22}
+.pill.unterwegs{color:#5fb4aa;border-color:#2c5a55}
 .badge{display:inline-block;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--info);color:#0b1320;font:700 12px/20px var(--label);text-align:center}
 
 /* ---------- toast ---------- */

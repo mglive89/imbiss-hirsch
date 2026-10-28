@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="de" class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Fahrer</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/fahrer-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/fahrer-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fahrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Driver app, phone first: only deliveries the kitchen has finished. Big address, one tap to Google Maps, one tap to finish. */
+:root{--app:#5fb4aa}
+.seg.top{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
+.seg.top button{padding:10px 6px;font-size:15px}
+.seg.top .badge{margin-left:4px;background:#5fb4aa;color:#06201d}
+.list{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.dcard{background:var(--surface);border:1px solid var(--line);border-top:6px solid #5fb4aa;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;will-change:transform}
+.dcard.unterwegs{border-top-color:var(--warn)}
+.dcard.late{border-top-color:var(--bad)}
+.dcard.fresh{animation:glow 1.2s ease-in-out 4}
+.d-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.d-code{font-family:var(--display);font-size:24px;line-height:1;background:#5fb4aa;color:#06201d;border-radius:8px;padding:4px 9px;letter-spacing:.05em}
+.d-no{color:var(--muted);font-size:14px}
+.d-eta{margin-left:auto;font-family:var(--label);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;text-align:right}
+.dcard.late .d-eta{color:var(--bad);animation:latePulse 1.4s ease-in-out infinite}
+@keyframes latePulse{50%{opacity:.45}}
+.d-addr{font-family:var(--label);font-weight:700;font-size:24px;line-height:1.15;text-transform:uppercase;letter-spacing:.01em}
+.d-who{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted)}
+.d-who b{color:var(--fg);font-weight:500}
+.d-who a{color:var(--fg);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:14px}
+.d-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:15px;color:var(--muted)}
+.d-items .q{color:var(--kraft);font-weight:600;margin-right:6px}
+.d-note{background:#2a2216;border-radius:8px;padding:6px 9px;font-size:15px;color:#f1d9a6}
+.d-pay{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:12px;padding:10px 12px;font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase}
+.d-pay.cash{background:rgba(229,181,74,.12);color:var(--warn);border:1px solid #6b5524}
+.d-pay.paid{background:rgba(127,191,95,.10);color:var(--ok);border:1px solid #3e5f2f}
+.d-pay .num{font-size:24px}
+.d-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.d-actions .btn{padding:14px 10px;font-size:17px}
+.d-actions .wide{grid-column:1/-1}
+.maps{background:#fff;color:#1f1f1f;border-color:#fff}
+.maps svg{width:20px;height:20px}
+.routeall{display:flex;margin-top:12px}
+.routeall .btn{flex:1}
+.empty svg{display:block;width:72px;height:72px;margin:0 auto 12px;fill:none;stroke:var(--faint);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:drive 2.6s ease-in-out infinite}
+@keyframes drive{0%,100%{transform:translateX(-6px)}50%{transform:translateX(6px)}}
+.donerow{display:flex;gap:10px;align-items:center;background:var(--surface);border-radius:12px;padding:10px 12px;font-size:14px}
+.donerow .a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flyoff{position:fixed;z-index:70;pointer-events:none}
+</style>
+</head>
+<body class="has-bnav">
+
+<div id="app" hidden>
+  <header class="appbar">
+    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Fahrer</b></a>
+    <span class="sp"></span>
+    <span class="conn" id="conn" title="Live-Verbindung"></span>
+    <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Ton an/aus" title="Ton an/aus"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+    <button class="btn ghost" type="button" data-logout>Abmelden</button>
+  </header>
+  <main class="content"><div class="inner" style="max-width:720px">
+    <div class="seg top" id="tabs">
+      <button type="button" data-t="bereit" aria-pressed="true">Abholbereit<span class="badge" id="b-bereit" hidden>0</span></button>
+      <button type="button" data-t="unterwegs" aria-pressed="false">Unterwegs<span class="badge" id="b-unterwegs" hidden>0</span></button>
+      <button type="button" data-t="erledigt" aria-pressed="false">Erledigt</button>
+    </div>
+    <div id="view"></div>
+  </div></main>
+</div>
+
+<div class="starter" id="starter" hidden>
+  <div>
+    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <p class="appname">Fahrer</p>
+    <p>Antippen: Ton an, wenn eine Lieferung fertig ist. Bildschirm bleibt an.</p>
+    <button class="btn big primary" type="button" id="startBtn">Schicht starten</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script src="../shared/staff.js"></script>
+<script>
+const { $, esc, eur, hhmm, minsAgo } = IH;
+const SHOP = "Ringstraße 27, 74321 Bietigheim-Bissingen";
+const MAPS_ICON = `<svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>`;
+let sb, me, orders = [], tab = "bereit", first = true;
+const seen = new Set();
+
+IH.splash("../assets/logo.jpg", "Fahrer");
+IH.staffGate({ app: "Fahrer", onReady: async (ctx) => {
+  ({ sb, me } = ctx);
+  if (!IH.sound.on) $("starter").hidden = false;
+  await load(); subscribe(); render();
+}});
+
+/* ---------- data: deliveries only ---------- */
+async function load(){
+  const [from] = IH.dayRange(IH.berlinToday());
+  const { data, error } = await sb.from("orders").select("*, order_items(name_de,qty,note)")
+    .eq("channel", "lieferung").neq("payment", "offen")
+    .or(`status.in.(fertig,unterwegs),and(status.eq.abgeschlossen,created_at.gte.${from})`)
+    .order("updated_at", { ascending: true }).limit(200);
+  $("conn").classList.toggle("off", !!error);
+  if (error) return;
+  const fresh = [];
+  for (const o of data){ if (o.status === "fertig" && !seen.has(o.id)){ seen.add(o.id); if (!first) fresh.push(o.id); } }
+  first = false; orders = data;
+  if (fresh.length){
+    IH.sound.ready(); IH.blinkTitle("Lieferung bereit");
+    IH.toast(fresh.length === 1 ? `Neue Lieferung bereit · ${codeOf(orders.find(o => o.id === fresh[0]))}` : `${fresh.length} Lieferungen bereit`);
+  }
+  render(fresh);
+}
+let reloadT;
+function subscribe(){
+  sb.channel("fahrer").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
+    .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
+  setInterval(load, 20000);
+  setInterval(() => render(), 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+}
+
+/* ---------- render ---------- */
+const codeOf = o => o ? (o.pickup_code || "#" + o.id) : "";
+const cashDue = o => o.payment === "bei_lieferung";
+function card(o, fresh){
+  const late = o.eta_at && new Date(o.eta_at).getTime() < Date.now();
+  const eta = o.eta_at ? `<div class="d-eta">bis ${hhmm(o.eta_at)}<br><small class="muted">${IH.etaText(o).split(" · ")[1] || ""}</small></div>` : `<div class="d-eta muted">fertig seit ${minsAgo(o.updated_at)} min</div>`;
+  const pay = cashDue(o)
+    ? `<div class="d-pay cash"><span>Bar kassieren</span><span class="num">${eur(o.total)}</span></div>`
+    : `<div class="d-pay paid"><span>${esc(IH.PAY[o.payment] || "Bezahlt")}${o.payment === "online" && IH.PM[o.pay_method] ? " · " + IH.PM[o.pay_method] : ""}</span><span class="num">${eur(o.total)}</span></div>`;
+  const items = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span>${esc(i.name_de)}${i.note ? ` (${esc(i.note)})` : ""}</li>`).join("");
+  let actions;
+  if (o.status === "fertig"){
+    actions = `<a class="btn maps" href="${IH.mapsUrl(o.address)}" target="_blank" rel="noopener">${MAPS_ICON}Route</a>
+      <button class="btn primary" type="button" data-go="${o.id}">Losfahren</button>`;
+  } else {
+    actions = `<a class="btn maps wide" href="${IH.mapsUrl(o.address)}" target="_blank" rel="noopener">${MAPS_ICON}In Google Maps öffnen</a>`
+      + (cashDue(o)
+        ? `<button class="btn ok" type="button" data-done="${o.id}" data-m="bar">Bar kassiert</button><button class="btn" type="button" data-done="${o.id}" data-m="karte">Karte kassiert</button>`
+        : `<button class="btn ok wide" type="button" data-done="${o.id}">Zugestellt</button>`);
+  }
+  return `<article class="dcard ${o.status}${late ? " late" : ""}${fresh ? " fresh" : ""}" data-k="d${o.id}">
+    <div class="d-head"><span class="d-code">${o.pickup_code || "#" + o.id}</span><span class="d-no">#${o.id}</span>${eta}</div>
+    <div class="d-addr">${esc(o.address || "Adresse fehlt")}</div>
+    <div class="d-who"><b>${esc(o.customer_name || "")}</b>${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^+0-9]/g, ""))}">${esc(o.phone)}</a>` : ""}${o.status === "unterwegs" && o.driver_email ? `<span>· ${esc(o.driver_email.split("@")[0])}</span>` : ""}</div>
+    <ul class="d-items">${items}</ul>
+    ${o.note ? `<div class="d-note">${esc(o.note)}</div>` : ""}
+    ${pay}
+    <div class="d-actions">${actions}</div>
+  </article>`;
+}
+function render(fresh = []){
+  if (!sb) return;
+  const ready = orders.filter(o => o.status === "fertig").sort((a, b) => new Date(a.eta_at || a.updated_at) - new Date(b.eta_at || b.updated_at));
+  const out = orders.filter(o => o.status === "unterwegs").sort((a, b) => new Date(a.eta_at || a.out_at) - new Date(b.eta_at || b.out_at));
+  const done = orders.filter(o => o.status === "abgeschlossen").sort((a, b) => new Date(b.delivered_at || b.updated_at) - new Date(a.delivered_at || a.updated_at));
+  for (const [id, n] of [["b-bereit", ready.length], ["b-unterwegs", out.length]]){ const b = $(id); const was = b.textContent; b.hidden = !n; b.textContent = n; if (n && was !== String(n)) IH.bump(b); }
+  const V = $("view");
+  IH.flip(V, () => {
+    if (tab === "erledigt"){
+      V.innerHTML = `<div class="list">${done.map(o => `<div class="donerow" data-k="d${o.id}"><b>${o.pickup_code || "#" + o.id}</b><span class="a">${esc(o.address || "")}</span><span class="muted num">${o.delivered_at ? hhmm(o.delivered_at) : ""}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Heute noch nichts zugestellt.</div>`}</div>`;
+      return;
+    }
+    const list = tab === "bereit" ? ready : out;
+    const route = list.length > 1 ? `<div class="routeall"><a class="btn maps" href="${routeAll(list)}" target="_blank" rel="noopener">${MAPS_ICON}Route mit allen ${list.length} Stopps</a></div>` : "";
+    V.innerHTML = route + `<div class="list">${list.map(o => card(o, fresh.includes(o.id))).join("") || `<div class="empty"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>${tab === "bereit" ? "Keine Lieferung fertig. Du bekommst einen Ton, sobald die Küche fertig ist." : "Gerade nichts unterwegs."}</div>`}</div>`;
+  });
+  V.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(+b.dataset.go, b));
+  V.querySelectorAll("[data-done]").forEach(b => b.onclick = () => done_(+b.dataset.done, b.dataset.m, b));
+}
+function routeAll(list){
+  const stops = list.map(o => o.address).filter(Boolean);
+  const dest = stops[stops.length - 1], way = stops.slice(0, -1).slice(0, 9);
+  return "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=" + encodeURIComponent(SHOP) + "&destination=" + encodeURIComponent(dest) + (way.length ? "&waypoints=" + encodeURIComponent(way.join("|")) : "");
+}
+function flyAway(btn, dir){
+  if (IH.reduced || !btn) return;
+  const card = btn.closest(".dcard"); if (!card) return;
+  const r = card.getBoundingClientRect(), ghost = card.cloneNode(true);
+  ghost.classList.add("flyoff"); ghost.style.cssText += `left:${r.left}px;top:${r.top}px;width:${r.width}px;margin:0`;
+  document.body.appendChild(ghost);
+  ghost.animate([{ transform: "none", opacity: 1 }, { transform: `translateX(${dir * 110}%) rotate(${dir * 6}deg)`, opacity: 0 }], { duration: 500, easing: "cubic-bezier(.5,0,.75,0)" }).finished.then(() => ghost.remove(), () => ghost.remove());
+}
+async function go(id, btn){
+  const o = orders.find(x => x.id === id);
+  if (o && o.address) window.open(IH.mapsUrl(o.address), "_blank", "noopener");   // straight into navigation
+  flyAway(btn, 1);
+  if (o){ o.status = "unterwegs"; o.out_at = new Date().toISOString(); o.driver_email = me.email; }
+  render();
+  const { error } = await sb.from("orders").update({ status: "unterwegs", driver_email: me.email }).eq("id", id);
+  if (error){ IH.toast("Konnte nicht gespeichert werden", "err"); load(); return; }
+  IH.toast(`${codeOf(o)} unterwegs – der Gast sieht es auf dem Handy`);
+}
+async function done_(id, method, btn){
+  const o = orders.find(x => x.id === id);
+  const patch = { status: "abgeschlossen" };
+  if (method) patch.payment = method;            // cash collected at the door
+  flyAway(btn, 1);
+  if (o) Object.assign(o, patch, { delivered_at: new Date().toISOString() });
+  render();
+  const { error } = await sb.from("orders").update(patch).eq("id", id);
+  if (error){ IH.toast("Konnte nicht gespeichert werden", "err"); load(); return; }
+  const r = btn.getBoundingClientRect(); IH.burst(r.left + r.width / 2, r.top);
+  IH.sound.paid();
+  IH.toast(`${codeOf(o)} zugestellt${method ? " · " + (method === "bar" ? "bar" : "Karte") + " kassiert" : ""}`);
+}
+
+/* ---------- controls ---------- */
+$("tabs").querySelectorAll("button").forEach(b => b.onclick = () => {
+  tab = b.dataset.t;
+  $("tabs").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  IH.seg($("tabs")); $("view").innerHTML = ""; render();
+  $("view").classList.remove("view-in"); void $("view").offsetWidth; $("view").classList.add("view-in");
+});
+requestAnimationFrame(() => IH.seg($("tabs")));
+const paintSound = () => $("soundBtn").setAttribute("aria-pressed", IH.sound.on);
+$("soundBtn").onclick = () => { if (IH.sound.on) IH.sound.off(); else { IH.sound.unlock(); IH.sound.tap(); } paintSound(); };
+$("startBtn").onclick = () => {
+  IH.sound.unlock(); IH.sound.received(); paintSound();
+  $("starter").classList.add("out"); setTimeout(() => $("starter").hidden = true, 350);
+  IH.keepAwake(); requestAnimationFrame(() => IH.seg($("tabs")));
+};
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>

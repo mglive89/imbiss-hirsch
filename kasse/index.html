@@ -51,6 +51,11 @@
 .t-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
 .t-items li{display:flex;gap:8px;font-size:17px}
 .t-items .q{font-family:var(--label);font-weight:700;min-width:28px;color:var(--kraft)}
+.eta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.eta .lbl{margin-right:2px}
+.etab{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:4px 11px;font-family:var(--label);font-weight:700;font-size:14px;cursor:pointer;transition:all .2s var(--ease)}
+.etab[aria-pressed="true"]{background:#5fb4aa;border-color:#5fb4aa;color:#06201d;transform:scale(1.05)}
+.etat{font-size:13px;color:var(--muted);margin-left:4px}
 .t-note{background:#2a2216;border-radius:8px;padding:6px 9px;font-size:15px;color:#f1d9a6}
 .t-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .t-foot .sum{font-family:var(--label);font-weight:700;font-size:20px;margin-right:auto;font-variant-numeric:tabular-nums}
@@ -125,6 +130,7 @@
     <a href="#kasse"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>Kasse<span class="badge" data-badge hidden>0</span></a>
     <a href="#neu"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Neu</a>
     <a href="../kueche/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 13a6 6 0 1 1 12 0v5H6z"/><path d="M4 21h16M12 3v2"/></svg>Küche</a>
+    <a href="../fahrer/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Fahrer</a>
     <a href="../dashboard/"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard</a>
   </nav>
 </div>
@@ -177,7 +183,7 @@ async function loadMenu(){
 async function loadOrders(){
   const [from] = IH.dayRange(IH.berlinToday());
   const { data, error } = await sb.from("orders").select("*, order_items(*)")
-    .or(`status.in.(neu,zubereitung,fertig),created_at.gte.${from}`)
+    .or(`status.in.(neu,zubereitung,fertig,unterwegs),created_at.gte.${from}`)
     .order("created_at", { ascending: true }).limit(400);
   $("conn").classList.toggle("off", !!error);
   if (error) return IH.toast("Bestellungen konnten nicht geladen werden", "err");
@@ -252,17 +258,25 @@ function ticket(o, fresh){
     actions = (o.channel === "lieferung" ? `<button class="btn" type="button" data-pay="${o.id}" data-m="bei_lieferung">Bei Lieferung</button>` : "")
       + `<button class="btn" type="button" data-pay="${o.id}" data-m="karte">Karte</button>`
       + `<button class="btn primary" type="button" data-pay="${o.id}" data-m="bar">Bar bezahlt</button>`;
+  } else if (o.status === "unterwegs"){
+    actions = `<button class="btn ok" type="button" data-next="${o.id}" data-to="abgeschlossen">Zugestellt</button>`;
   } else if (o.status === "fertig"){
-    actions = `<button class="btn" type="button" data-back="${o.id}">Zurück</button><button class="btn ok" type="button" data-next="${o.id}" data-to="abgeschlossen">${o.channel === "lieferung" ? "Ausgeliefert" : "Ausgegeben"}</button>`;
+    actions = `<button class="btn" type="button" data-back="${o.id}">Zurück</button><button class="btn ok" type="button" data-next="${o.id}" data-to="abgeschlossen">${o.channel === "lieferung" ? "Zugestellt" : "Ausgegeben"}</button>`;
   } else {
     actions = `<button class="btn" type="button" data-unpay="${o.id}">Zahlung zurück</button><button class="btn primary" type="button" data-next="${o.id}" data-to="fertig">Fertig</button>`;
   }
   const payPill = paid ? `<span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : "";
-  const cookPill = paid && o.status === "zubereitung" ? `<span class="pill zubereitung">Wird zubereitet</span>` : "";
+  const cookPill = (paid && o.status === "zubereitung" ? `<span class="pill zubereitung">Wird zubereitet</span>` : "")
+    + (o.status === "unterwegs" ? `<span class="pill unterwegs">Unterwegs${o.driver_email ? " · " + esc(o.driver_email.split("@")[0]) : ""}</span>` : "")
+    + (o.channel === "lieferung" && o.status === "fertig" ? `<span class="pill unterwegs">Wartet auf Fahrer</span>` : "");
+  const etaRow = o.channel === "lieferung" && !["unterwegs"].includes(o.status)
+    ? `<div class="eta"><span class="lbl">Wartezeit</span>${[30,45,60].map(m => `<button type="button" class="etab" data-eta="${o.id}" data-m="${m}" aria-pressed="${o.eta_minutes === m}">${m} min</button>`).join("")}<span class="etat">${o.eta_at ? esc(IH.etaText(o)) : "noch nicht gesetzt"}</span></div>`
+    : (o.channel === "lieferung" && o.eta_at ? `<div class="eta"><span class="etat">Zugesagt ${esc(IH.etaText(o))}</span></div>` : "");
   return `<article class="ticket ${paid ? o.status : "neu"}${fresh ? " fresh" : ""}" data-k="o${o.id}">
     <div class="t-head">${o.pickup_code ? `<span class="t-code" title="Abholcode">${o.pickup_code}</span>` : ""}<span class="t-no"${o.pickup_code ? ' style="font-size:16px;color:var(--muted)"' : ""}>#${o.id}</span><span class="t-where">${where(o)}</span>
       <span class="t-time${late ? " late" : ""}" title="eingegangen ${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(ref)} min</span></div>
     <div class="t-meta">${meta.join(" · ")} ${payPill} ${cookPill}</div>
+    ${etaRow}
     <ul class="t-items">${lines}</ul>
     ${o.note ? `<div class="t-note">${esc(o.note)}</div>` : ""}
     <div class="t-foot"><span class="sum">${eur(o.total)}</span>
@@ -275,8 +289,8 @@ function renderBoard(fresh = [], flashReady = false){
   const active = orders.filter(o => !["abgeschlossen","storniert"].includes(o.status));
   const cols = [
     ["neu", "Zu bezahlen", active.filter(o => o.payment === "offen"), "Gast bezahlt an der Kasse → Bestellung geht in die Küche"],
-    ["zubereitung", "In der Küche", active.filter(o => o.payment !== "offen" && o.status !== "fertig").sort((a,b) => new Date(a.paid_at) - new Date(b.paid_at)), "Läuft auf dem Küchen-Display"],
-    ["fertig", "Fertig zur Ausgabe", active.filter(o => o.payment !== "offen" && o.status === "fertig"), "Ausgeben oder ausliefern"]
+    ["zubereitung", "In der Küche", active.filter(o => o.payment !== "offen" && (o.status === "neu" || o.status === "zubereitung")).sort((a,b) => new Date(a.paid_at) - new Date(b.paid_at)), "Läuft auf dem Küchen-Display"],
+    ["fertig", "Fertig zur Ausgabe", active.filter(o => o.payment !== "offen" && (o.status === "fertig" || o.status === "unterwegs")), "Ausgeben · Lieferungen übernimmt die Fahrer-App"]
   ];
   IH.flip($("board"), () => {
     $("board").innerHTML = cols.map(([st, label, list, hint]) => `<div class="col" id="col-${st}"><h3><span class="pill ${st}">${label}</span><span class="n" id="n-${st}">${list.length}</span></h3><p class="hintline">${hint}</p><div class="stack">`
@@ -291,6 +305,7 @@ function renderBoard(fresh = [], flashReady = false){
   B.querySelectorAll("[data-next]").forEach(b => b.onclick = () => setStatus(+b.dataset.next, b.dataset.to));
   B.querySelectorAll("[data-back]").forEach(b => b.onclick = () => setStatus(+b.dataset.back, "zubereitung"));
   B.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => setPayment(+b.dataset.pay, b.dataset.m));
+  B.querySelectorAll("[data-eta]").forEach(b => b.onclick = () => setEta(+b.dataset.eta, +b.dataset.m));
   B.querySelectorAll("[data-unpay]").forEach(b => armed(b, "Wirklich zurück?", "Zahlung zurück", () => setPayment(+b.dataset.unpay, "offen")));
   B.querySelectorAll("[data-cancel]").forEach(b => armed(b, "Wirklich stornieren?", "Storno", () => {
     const o = orders.find(x => x.id === +b.dataset.cancel);
@@ -312,6 +327,13 @@ async function setPayment(id, payment){
   const { error } = await sb.from("orders").update(patch).eq("id", id);
   if (error){ IH.toast("Zahlung konnte nicht gespeichert werden", "err"); loadOrders(); return; }
   if (payment !== "offen"){ IH.sound.paid(); IH.toast(`#${id} bezahlt → Küche`); }
+}
+async function setEta(id, minutes){
+  const o = orders.find(x => x.id === id);
+  if (o){ o.eta_minutes = minutes; o.eta_at = new Date(Date.now() + minutes * 60000).toISOString(); renderBoard(); }
+  const { error } = await sb.from("orders").update({ eta_minutes: minutes }).eq("id", id);
+  if (error){ IH.toast("Wartezeit konnte nicht gespeichert werden", "err"); loadOrders(); return; }
+  IH.toast(`#${id}: Lieferung in ca. ${minutes} min – der Gast sieht die Uhrzeit`);
 }
 async function setStatus(id, status){
   const o = orders.find(x => x.id === id);
@@ -336,7 +358,7 @@ $("codeIn").addEventListener("input", (e) => {
 });
 
 /* ========== NEW ORDER (phone / WhatsApp / counter) ========== */
-const nd = { cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", payment: "offen", table: "", name: "", phone: "", address: "", note: "", err: "" };
+const nd = { eta: 45, cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", payment: "offen", table: "", name: "", phone: "", address: "", note: "", err: "" };
 const ndPrice = it => nd.channel === "lieferung" ? +(it.price_delivery ?? it.price_pickup) : +it.price_pickup;
 function renderNew(){
   if (!nd.cat && cats.length) nd.cat = cats[0].id;
@@ -359,7 +381,8 @@ function renderNew(){
     ${nd.channel === "tisch" ? `<div class="field"><label for="ndTable">Tischnummer</label><input id="ndTable" type="text" inputmode="numeric" maxlength="6" value="${esc(nd.table)}"></div>` : `
     <div class="g2"><div class="field"><label for="ndName">Name</label><input id="ndName" type="text" value="${esc(nd.name)}"></div>
     <div class="field"><label for="ndPhone">Telefon</label><input id="ndPhone" type="tel" value="${esc(nd.phone)}"></div></div>`}
-    ${nd.channel === "lieferung" ? `<div class="field"><label for="ndAddr">Adresse</label><textarea id="ndAddr" rows="2">${esc(nd.address)}</textarea></div>` : ""}
+    ${nd.channel === "lieferung" ? `<div class="field"><label for="ndAddr">Adresse</label><textarea id="ndAddr" rows="2">${esc(nd.address)}</textarea></div>
+    <div class="field"><span class="lbl">Wartezeit für den Gast</span><div class="seg" id="ndEta">${[30,45,60].map(m => `<button type="button" data-v="${m}" aria-pressed="${nd.eta === m}">${m} min</button>`).join("")}</div></div>` : ""}
     <div class="field"><label for="ndNote">Anmerkung</label><textarea id="ndNote" rows="2">${esc(nd.note)}</textarea></div>
     <div class="field"><span class="lbl">Zahlung</span><div class="seg" id="ndPay">${["offen","bar","karte"].concat(nd.channel === "lieferung" ? ["bei_lieferung"] : []).map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.payment === s}">${{ offen: "Noch offen", bar: "Bar", karte: "Karte", bei_lieferung: "Bei Lieferung" }[s]}</button>`).join("")}</div>
       <span class="muted" style="font-size:13px">${nd.payment === "offen" ? "Geht erst nach dem Bezahlen in die Küche." : "Geht sofort in die Küche."}</span></div>
@@ -380,8 +403,9 @@ function renderNew(){
     if (nd.channel === "lieferung" && nd.payment === "offen") nd.payment = "bei_lieferung";
     if (nd.channel !== "lieferung" && nd.payment === "bei_lieferung") nd.payment = "offen"; renderNew(); });
   $("ndPay").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.payment = b.dataset.v; renderNew(); });
+  if ($("ndEta")) $("ndEta").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.eta = +b.dataset.v; renderNew(); });
   $("ndSend").onclick = ndSend;
-  requestAnimationFrame(() => ["ndSrc","ndCh","ndPay"].forEach(id => IH.seg($(id))));
+  requestAnimationFrame(() => ["ndSrc","ndCh","ndPay","ndEta"].forEach(id => IH.seg($(id))));
 }
 function ndCapture(){
   const v = id => $(id) ? $(id).value : null;
@@ -400,6 +424,7 @@ async function ndSend(){
   const btn = $("ndSend"); btn.disabled = true; btn.textContent = "Wird angelegt …";
   const { data, error } = await sb.rpc("place_order", { p });
   if (error){ nd.err = error.message; renderNew(); return; }
+  if (nd.channel === "lieferung") await sb.from("orders").update({ eta_minutes: nd.eta }).eq("id", data.id);
   const r = btn.getBoundingClientRect(); IH.burst(r.left + r.width / 2, r.top);
   IH.toast(data.code ? `Bestellung #${data.id} angelegt · Code ${data.code}` : `Bestellung #${data.id} angelegt`);
   Object.assign(nd, { cart: {}, table: "", name: "", phone: "", address: "", note: "", err: "", payment: nd.channel === "lieferung" ? "bei_lieferung" : "offen" });
