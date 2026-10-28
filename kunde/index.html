@@ -572,6 +572,13 @@ async function checkOnlinePay(){
     onlinePay = r.ok && (await r.json()).configured === true;
   }catch(e){ onlinePay = false; }
 }
+async function confirmPay(o){
+  try{
+    const r = await fetch(fnUrl("confirm-payment"), {method:"POST", headers:{"Content-Type":"application/json", apikey: IH_CONFIG.key}, body: JSON.stringify({id: o.id, token: o.token})});
+    const d = await r.json();
+    if (d.paid){ o.justPaid = false; pollStatus(o); }
+  }catch(e){}
+}
 async function startCheckout(o){
   const ret = location.origin + location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "");
   try{
@@ -635,6 +642,7 @@ async function pollStatus(o){
         } else { pa.innerHTML = ""; delete pa.dataset.on; }
       }
     }
+    if (o.justPaid && pay === "offen"){ o.tries = (o.tries || 0) + 1; if (o.tries % 2 === 0 && o.tries <= 24) confirmPay(o); }
     if (pay !== "offen") o.justPaid = false;
     if (st === "abgeschlossen" || st === "storniert"){ if (st === "abgeschlossen") store.del("ih-last-order"); return; }
   }
@@ -753,7 +761,7 @@ addEventListener("hashchange", () => route(true));
     const last = JSON.parse(store.get("ih-last-order") || "null");
     if (last && Date.now() - last.at < 6*3600e3 && sb){
       if (back && String(last.id) === back){
-        if (params.get("bezahlt")) last.justPaid = true;
+        if (params.get("bezahlt")){ last.justPaid = true; last.tries = 0; confirmPay(last); }
         showOrder(last, params.get("abbruch") ? tr("payCancel") : "");
       } else pollStatus(last);
     } else store.del("ih-last-order");

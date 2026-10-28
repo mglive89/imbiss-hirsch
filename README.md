@@ -35,7 +35,7 @@ Imbiss/
 ├─ assets/          Logo, Titelbild, App-Icons je App
 ├─ supabase/
 │  ├─ schema.sql    komplette Datenbank (Tabellen, Rechte, Funktionen)
-│  └─ functions/    create-checkout + stripe-webhook (Online-Zahlung)
+│  └─ functions/    create-checkout, confirm-payment, stripe-webhook (Online-Zahlung)
 ├─ sw.js            Offline-Cache für alle Apps
 └─ index.html       Weiterleitung zur Kunden-App (alte QR-Codes funktionieren weiter)
 ```
@@ -50,10 +50,11 @@ Kein Build-Schritt: statische Dateien, direkt auf GitHub Pages oder jedem HTTPS-
 2. **Erstes Konto**: Kasse oder Dashboard öffnen → „Konto erstellen“ → E-Mail bestätigen → anmelden. Das erste Konto wird Admin.
 3. **Mitarbeiter**: erstellen selbst ein Konto; Admin schaltet sie im Dashboard → Team frei. Ein Login gilt für alle Personal-Apps.
 4. **Tische**: Dashboard → QR-Codes → Anzahl Tische → „Als Bild speichern“ → drucken (ca. 5 × 5 cm).
-5. **Online-Zahlung** (optional) über Stripe:
-   - Stripe-Konto → Zahlungsmethoden: PayPal, Apple Pay, Google Pay aktivieren
-   - Supabase → Edge Functions → Secrets: `STRIPE_SECRET_KEY`
-   - Stripe → Webhooks → `https://trwvzjgkygoggnomfovi.supabase.co/functions/v1/stripe-webhook`, Ereignisse `checkout.session.completed`, `checkout.session.async_payment_succeeded` → Secret `STRIPE_WEBHOOK_SECRET`
+5. **Online-Zahlung per QR** (Karte, PayPal, Apple Pay, Google Pay) über Stripe:
+   - Stripe-Konto → Einstellungen → Zahlungsmethoden: PayPal, Apple Pay, Google Pay aktivieren
+   - Supabase → Edge Functions → Secrets: `STRIPE_SECRET_KEY` = geheimer Schlüssel (`sk_test_…` zum Testen, `sk_live_…` im Betrieb)
+   - Ab dann zeigt die Kunden-App „Karte / PayPal“. Nach der Zahlung prüft `confirm-payment` direkt bei Stripe und die Bestellung geht in die Küche.
+   - Empfohlen als Absicherung (Gast schließt den Browser sofort nach dem Bezahlen): Stripe → Webhooks → `https://trwvzjgkygoggnomfovi.supabase.co/functions/v1/stripe-webhook`, Ereignisse `checkout.session.completed`, `checkout.session.async_payment_succeeded` → Secret `STRIPE_WEBHOOK_SECRET`
    - Andere Domain als GitHub Pages: Secret `APP_ORIGINS` setzen.
 
 ## Sicherheit
