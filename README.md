@@ -20,6 +20,7 @@ Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-
 3. **Küche** sieht nur bezahlte Bestellungen, mit Eingangston. *Start* → *Fertig*.
 4. „Fertig“ löst einen Alarm aus: beim Gast auf dem Handy, an der Kasse und groß auf der **Abhol-Anzeige** mit Tischnummer.
 5. **Kasse** gibt aus → abgeschlossen. Das **Dashboard** zählt live mit.
+6. Nach dem Abholen fragt die **Kunden-App** nach 1–5 Sternen und einem Kommentar und bietet danach **allen** Gästen den Link zur Google-Bewertung an (Google erlaubt nicht, nur zufriedene Gäste weiterzuleiten). Auswertung: **Dashboard → Bewertungen**. Der Google-Link steht in `shared/config.js`.
 
 ## Aufbau
 

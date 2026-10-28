@@ -224,3 +224,38 @@ grant execute on function public.place_order(jsonb), public.order_status(bigint,
 
 -- ---------- Live-Updates ----------
 alter publication supabase_realtime add table public.orders, public.order_items, public.menu_items;
+
+-- ---------- Bewertungen nach dem Abholen ----------
+create table public.feedback (
+  id bigint generated always as identity primary key,
+  order_id bigint not null unique references public.orders(id) on delete cascade,
+  rating int not null check (rating between 1 and 5),
+  comment text,
+  lang text,
+  went_to_google boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index on public.feedback(created_at desc);
+alter table public.feedback enable row level security;
+create policy "staff read feedback" on public.feedback for select to authenticated using ((select public.is_staff()));
+
+create or replace function public.submit_feedback(p_id bigint, p_token uuid, p_rating int, p_comment text, p_lang text default null, p_google boolean default false)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare o public.orders%rowtype;
+begin
+  select * into o from public.orders where id = p_id and token = p_token;
+  if not found then raise exception 'Bestellung nicht gefunden'; end if;
+  if o.status = 'storniert' then raise exception 'Bestellung storniert'; end if;
+  if p_rating is null or p_rating < 1 or p_rating > 5 then raise exception 'Bitte 1 bis 5 Sterne wählen'; end if;
+  insert into public.feedback(order_id, rating, comment, lang, went_to_google)
+  values (p_id, p_rating, nullif(left(trim(coalesce(p_comment,'')), 1000), ''), left(p_lang, 5), coalesce(p_google, false))
+  on conflict (order_id) do update set
+    rating = excluded.rating,
+    comment = coalesce(excluded.comment, public.feedback.comment),
+    went_to_google = public.feedback.went_to_google or excluded.went_to_google
+  where public.feedback.created_at > now() - interval '2 hours';
+  return true;
+end $$;
+revoke execute on function public.submit_feedback(bigint, uuid, int, text, text, boolean) from public;
+grant execute on function public.submit_feedback(bigint, uuid, int, text, text, boolean) to anon, authenticated;
+alter publication supabase_realtime add table public.feedback;

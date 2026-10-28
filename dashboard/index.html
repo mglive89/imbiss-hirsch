@@ -74,6 +74,15 @@
 .dl-row .x1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:600px){.dl-row{grid-template-columns:56px 1fr auto}.dl-row .hide-s{display:none}}
 
+/* reviews */
+.rstars{letter-spacing:2px;font-size:16px}
+.rstars em{font-style:normal;color:#4a453f}
+.rstars em.on{color:var(--warn)}
+.revlist{display:grid;gap:10px;max-height:520px;overflow-y:auto}
+.rev{background:var(--bg);border-radius:12px;padding:10px 12px}
+.rev .rh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.rev p{margin:6px 0 0;font-size:15px;white-space:pre-wrap}
+
 /* menu editor */
 .mtools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .mtools input{max-width:320px}
@@ -148,6 +157,7 @@
     <nav class="side" aria-label="Bereiche">
       <span class="grp">Auswertung</span>
       <a href="#uebersicht"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Übersicht</a>
+      <a href="#bewertungen"><svg viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.1l-5.7 3.2 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>Bewertungen</a>
       <span class="grp">Verwalten</span>
       <a href="#karte"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h6"/></svg>Speisekarte</a>
       <a href="#qr"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7"/></svg>QR-Codes</a>
@@ -157,6 +167,7 @@
     </nav>
     <main class="content"><div class="inner">
       <section id="v-uebersicht"></section>
+      <section id="v-bewertungen" hidden></section>
       <section id="v-karte" hidden></section>
       <section id="v-qr" hidden></section>
       <section id="v-team" hidden></section>
@@ -165,6 +176,7 @@
   </div>
   <nav class="bnav" aria-label="Bereiche">
     <a href="#uebersicht"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Übersicht</a>
+    <a href="#bewertungen"><svg viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.1l-5.7 3.2 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>Sterne</a>
     <a href="#karte"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h6"/></svg>Karte</a>
     <a href="#qr"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7"/></svg>QR</a>
     <a href="#team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Team</a>
@@ -211,11 +223,12 @@ function subscribe(){
     .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
       if (current === "uebersicht" && statsDay === IH.berlinToday()){ clearTimeout(liveT); liveT = setTimeout(() => renderStats(false), 1200); }
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "feedback" }, () => { if (current === "bewertungen") renderReviews(false); })
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
 }
 
 /* ---------- routing ---------- */
-const VIEWS = ["uebersicht","karte","qr","team","apps"];
+const VIEWS = ["uebersicht","bewertungen","karte","qr","team","apps"];
 function route(){
   const h = location.hash.replace("#", "");
   const next = VIEWS.includes(h) ? h : "uebersicht";
@@ -224,7 +237,7 @@ function route(){
   document.querySelectorAll(".side a, .bnav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + current ? "page" : "false"));
   const v = $("v-" + current);
   if (changed){ v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); document.querySelector(".content").scrollTop = 0; }
-  ({ uebersicht: () => renderStats(true), karte: renderMenuEditor, qr: renderQR, team: renderTeam, apps: renderApps })[current]();
+  ({ uebersicht: () => renderStats(true), bewertungen: () => renderReviews(true), karte: renderMenuEditor, qr: renderQR, team: renderTeam, apps: renderApps })[current]();
 }
 addEventListener("hashchange", () => { if (staff) route(); });
 
@@ -304,6 +317,41 @@ function wireDay(){
   $("sDay").onchange = () => go($("sDay").value || IH.berlinToday());
   $("dPrev").onclick = () => go(IH.addDays(statsDay, -1));
   $("dNext").onclick = () => go(IH.addDays(statsDay, 1));
+}
+
+/* ========== REVIEWS ========== */
+let revDays = 30;
+const stars = n => `<span class="rstars" aria-label="${n} von 5">${[1,2,3,4,5].map(k => `<em class="${k <= n ? "on" : ""}">★</em>`).join("")}</span>`;
+async function renderReviews(animate){
+  const V = $("v-bewertungen");
+  if (animate) V.innerHTML = `<h2 class="view">Bewertungen</h2><div class="kpis">${[1,2,3].map(() => `<div class="kpi skeleton" style="height:112px"></div>`).join("")}</div>`;
+  const since = new Date(Date.now() - revDays * 864e5).toISOString();
+  const { data, error } = await sb.from("feedback").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(500);
+  if (error){ V.innerHTML = `<h2 class="view">Bewertungen</h2><div class="empty">Konnte nicht geladen werden.</div>`; return; }
+  const n = data.length, avg = n ? data.reduce((s, f) => s + f.rating, 0) / n : 0;
+  const dist = [5,4,3,2,1].map(k => ({ k, c: data.filter(f => f.rating === k).length }));
+  const maxC = Math.max(1, ...dist.map(d => d.c));
+  const google = data.filter(f => f.went_to_google).length;
+  const g = animate ? " grow" : "";
+  V.innerHTML = `<h2 class="view">Bewertungen<span class="sp"></span>
+    <div class="seg" id="revSeg">${[[7,"7 Tage"],[30,"30 Tage"],[365,"1 Jahr"]].map(([d, l]) => `<button type="button" data-d="${d}" aria-pressed="${revDays === d}">${l}</button>`).join("")}</div></h2>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Durchschnitt</div><div class="v"><span id="r-avg">${avg.toFixed(1).replace(".", ",")}</span> <span style="font-size:.6em;color:var(--warn)">★</span></div><span class="d">${n} Bewertungen</span></div>
+      <div class="kpi"><div class="k">Bewertungen</div><div class="v" id="r-n">${n}</div><span class="d">letzte ${revDays} Tage</span></div>
+      <div class="kpi"><div class="k">Zu Google weiter</div><div class="v" id="r-g">${google}</div><span class="d">${n ? Math.round(google / n * 100) : 0} % der Gäste</span></div>
+    </div>
+    <div class="grid2${g}">
+      <div class="box"><h3>Verteilung</h3><ol class="toplist">${dist.map((d, i) => `<li style="--i:${i}"><i style="width:${d.c / maxC * 100}%;background:rgba(229,181,74,.18)"></i><span>${stars(d.k)}</span><b>${d.c}</b></li>`).join("")}</ol>
+        <p class="muted" style="margin:14px 0 0;font-size:13px">Nach dem Abholen fragt die Kunden-App nach Sternen und bietet allen Gästen den Link zu Google an.</p>
+        <a class="btn" style="margin-top:12px" href="https://www.google.com/maps/place/?q=place_id:ChIJRyl0sXnUmUcR2bfdsW0bjqs" target="_blank" rel="noopener">Google-Profil öffnen</a></div>
+      <div class="box"><h3>Kommentare<small>${data.filter(f => f.comment).length}</small></h3><div class="revlist">${data.filter(f => f.comment).slice(0, 60).map(f => `<div class="rev" data-rv>
+          <div class="rh">${stars(f.rating)}<span class="muted">#${f.order_id} · ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(f.created_at))}${f.lang && f.lang !== "de" ? " · " + esc(f.lang.toUpperCase()) : ""}${f.went_to_google ? " · Google" : ""}</span></div>
+          <p>${esc(f.comment)}</p></div>`).join("") || `<div class="empty">Noch keine Kommentare.</div>`}</div></div>
+    </div>`;
+  IH.reveal(V);
+  requestAnimationFrame(() => IH.seg($("revSeg")));
+  $("revSeg").querySelectorAll("button").forEach(b => b.onclick = () => { revDays = +b.dataset.d; renderReviews(true); });
+  if (animate){ IH.countUp($("r-n"), n, x => Math.round(x), 0); IH.countUp($("r-g"), google, x => Math.round(x), 0); IH.countUp($("r-avg"), avg, x => x.toFixed(1).replace(".", ","), 0); }
 }
 
 /* ========== MENU EDITOR ========== */
