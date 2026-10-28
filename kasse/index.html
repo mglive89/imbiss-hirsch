@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="de" class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Kasse</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/kasse-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/kasse-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kasse">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Kasse: three columns = the life of an order at the till (pay → kitchen → hand out). Tickets glide between columns. */
+:root{--app:var(--kraft)}
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:980px){.board{grid-template-columns:1fr}}
+.col{background:rgba(255,255,255,.015);border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.col h3{font-family:var(--label);font-weight:700;font-size:18px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+.col h3 .n{margin-left:auto;font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums;display:inline-block}
+.col .hintline{color:var(--faint);font-size:13px;margin:0 0 12px}
+.col.flash{animation:colFlash 1.2s ease-in-out 3}
+@keyframes colFlash{50%{border-color:var(--ok);box-shadow:0 0 0 4px rgba(127,191,95,.25)}}
+.stack{display:flex;flex-direction:column;gap:12px}
+.ticket{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--info);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;will-change:transform}
+.ticket.zubereitung{border-left-color:var(--warn)}
+.ticket.fertig{border-left-color:var(--ok)}
+.ticket.fresh{animation:glow 1.2s ease-in-out 4}
+.t-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.t-no{font-family:var(--display);font-size:24px;line-height:1}
+.t-where{font-family:var(--label);font-weight:700;font-size:19px;text-transform:uppercase;letter-spacing:.03em}
+.t-time{margin-left:auto;font-family:var(--label);font-weight:600;color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
+.t-time.late{color:var(--bad);animation:latePulse 1.4s ease-in-out infinite}
+@keyframes latePulse{50%{opacity:.45}}
+.t-meta{font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.t-meta b{color:var(--fg);font-weight:500}
+.t-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.t-items li{display:flex;gap:8px;font-size:17px}
+.t-items .q{font-family:var(--label);font-weight:700;min-width:28px;color:var(--kraft)}
+.t-note{background:#2a2216;border-radius:8px;padding:6px 9px;font-size:15px;color:#f1d9a6}
+.t-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.t-foot .sum{font-family:var(--label);font-weight:700;font-size:20px;margin-right:auto;font-variant-numeric:tabular-nums}
+.done-list{margin-top:24px}
+.done-list summary{cursor:pointer;font-family:var(--label);font-weight:700;font-size:17px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);list-style:none}
+.done-list summary::before{content:"›";display:inline-block;margin-right:8px;transition:transform .25s var(--ease)}
+.done-list[open] summary::before{transform:rotate(90deg)}
+.dl{display:grid;gap:6px;margin-top:10px}
+.dl-row{display:grid;grid-template-columns:64px 60px 1fr auto auto;gap:10px;align-items:center;background:var(--surface);border-radius:10px;padding:8px 12px;font-size:14px}
+.dl-row .x1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.dl-row{grid-template-columns:56px 1fr auto}.dl-row .hide-s{display:none}}
+
+/* new order */
+.neworder{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:18px;align-items:start}
+@media (max-width:880px){.neworder{grid-template-columns:1fr}}
+.tools{display:flex;gap:8px;margin-bottom:10px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-family:var(--label);font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;color:var(--muted);transition:all .2s}
+.chip[aria-pressed="true"]{color:var(--kraft-ink);background:var(--kraft);border-color:var(--kraft)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.pbtn{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:74px;transition:border-color .2s,transform .15s var(--ease),background-color .2s}
+.pbtn:hover{border-color:var(--kraft)}
+.pbtn:active{transform:scale(.96);background:var(--surface-2)}
+.pbtn b{font-family:var(--label);font-weight:600;font-size:16px;text-transform:uppercase;line-height:1.15}
+.pbtn span{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.pbtn[disabled]{opacity:.4;cursor:default}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0}
+@media (max-width:880px){.panel{position:static}}
+.panel h3{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;margin:0}
+.oline{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:15px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--bg);cursor:pointer;transition:transform .15s}
+.qty button:active{transform:scale(.88)}
+.qty span{min-width:18px;text-align:center;font-variant-numeric:tabular-nums}
+.total{display:flex;justify-content:space-between;font-family:var(--label);font-weight:700;font-size:24px}
+.total .num{display:inline-block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="has-bnav">
+
+<div id="app" hidden>
+  <header class="appbar">
+    <a class="brand" href="#kasse"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Kasse</b></a>
+    <nav class="tabs" aria-label="Bereiche">
+      <a class="tab" href="#kasse">Bestellungen<span class="badge" data-badge hidden>0</span></a>
+      <a class="tab" href="#neu">Neue Bestellung</a>
+    </nav>
+    <span class="sp"></span>
+    <span class="conn" id="conn" title="Live-Verbindung"></span>
+    <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Ton an/aus" title="Ton an/aus">
+      <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <span class="who" data-who></span>
+    <button class="btn ghost" type="button" data-logout>Abmelden</button>
+  </header>
+
+  <main class="content"><div class="inner">
+    <section id="v-kasse">
+      <h2 class="view">Bestellungen<span class="sp"></span><a class="btn" href="../kueche/" target="_blank" rel="noopener">Küche öffnen</a></h2>
+      <div class="board" id="board"></div>
+      <details class="done-list" id="doneWrap"><summary id="doneSum">Heute erledigt</summary><div class="dl" id="doneList"></div></details>
+    </section>
+    <section id="v-neu" hidden></section>
+  </div></main>
+
+  <nav class="bnav" aria-label="Bereiche">
+    <a href="#kasse"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>Kasse<span class="badge" data-badge hidden>0</span></a>
+    <a href="#neu"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Neu</a>
+    <a href="../kueche/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 13a6 6 0 1 1 12 0v5H6z"/><path d="M4 21h16M12 3v2"/></svg>Küche</a>
+    <a href="../dashboard/"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard</a>
+  </nav>
+</div>
+
+<div class="starter" id="starter" hidden>
+  <div>
+    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <p class="appname">Kasse</p>
+    <p>Antippen, damit neue Bestellungen und fertige Gerichte mit Ton gemeldet werden.</p>
+    <button class="btn big primary" type="button" id="startBtn">Kasse starten</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script src="../shared/staff.js"></script>
+<script>
+const { $, esc, eur, hhmm, minsAgo, where, CH, SRC, ST, PAY, PM } = IH;
+let sb, me, staff;
+let cats = [], items = [], orders = [];
+const seen = new Set(), lastState = new Map();
+let firstLoad = true, current = "kasse";
+
+IH.splash("../assets/logo.jpg", "Kasse");
+IH.staffGate({ app: "Kasse", onReady: async (ctx) => {
+  ({ sb, me, staff } = ctx);
+  if (!IH.sound.on) $("starter").hidden = false;
+  await loadMenu();
+  await loadOrders();
+  subscribe();
+  route();
+}});
+
+/* ---------- start overlay & sound ---------- */
+function paintSound(){ $("soundBtn").setAttribute("aria-pressed", IH.sound.on); }
+$("startBtn").onclick = () => {
+  IH.sound.unlock(); IH.sound.received(); paintSound();
+  $("starter").classList.add("out"); setTimeout(() => $("starter").hidden = true, 350);
+};
+$("soundBtn").onclick = () => { if (IH.sound.on) IH.sound.off(); else { IH.sound.unlock(); IH.sound.tap(); } paintSound(); };
+
+/* ---------- data ---------- */
+async function loadMenu(){
+  const [c, i] = await Promise.all([sb.from("categories").select("*").order("sort"), sb.from("menu_items").select("*").order("sort")]);
+  if (c.error || i.error) return IH.toast("Speisekarte konnte nicht geladen werden", "err");
+  cats = c.data; items = i.data;
+}
+async function loadOrders(){
+  const [from] = IH.dayRange(IH.berlinToday());
+  const { data, error } = await sb.from("orders").select("*, order_items(*)")
+    .or(`status.in.(neu,zubereitung,fertig),created_at.gte.${from}`)
+    .order("created_at", { ascending: true }).limit(400);
+  $("conn").classList.toggle("off", !!error);
+  if (error) return IH.toast("Bestellungen konnten nicht geladen werden", "err");
+  const fresh = [], nowReady = [], paidOnline = [];
+  for (const o of data){
+    if (!seen.has(o.id)){ if (!firstLoad && o.status === "neu") fresh.push(o.id); seen.add(o.id); }
+    const before = lastState.get(o.id);
+    if (!firstLoad && before){
+      if (before.status !== "fertig" && o.status === "fertig") nowReady.push(o);
+      if (before.payment === "offen" && o.payment === "online") paidOnline.push(o);
+    }
+    lastState.set(o.id, { status: o.status, payment: o.payment });
+  }
+  firstLoad = false;
+  orders = data;
+  if (fresh.length){
+    IH.sound.received(); IH.blinkTitle(fresh.length === 1 ? `Neue Bestellung #${fresh[0]}` : `${fresh.length} neue Bestellungen`);
+    IH.toast(fresh.length === 1 ? `Neue Bestellung #${fresh[0]}` : `${fresh.length} neue Bestellungen`);
+  }
+  if (nowReady.length){
+    IH.sound.ready(); IH.blinkTitle("Fertig zur Ausgabe");
+    IH.toast(nowReady.map(o => `#${o.id} ${o.channel === "tisch" ? "Tisch " + o.table_no : CH[o.channel]}`).join(", ") + " – fertig zur Ausgabe");
+  }
+  if (paidOnline.length){ IH.sound.paid(); IH.toast(paidOnline.map(o => "#" + o.id).join(", ") + " online bezahlt → Küche"); }
+  renderBoard(fresh, nowReady.length > 0);
+  updateBadge();
+}
+let reloadT;
+function subscribe(){
+  const again = () => { clearTimeout(reloadT); reloadT = setTimeout(loadOrders, 350); };
+  sb.channel("kasse")
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, again)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_items" }, again)
+    .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => loadMenu().then(() => current === "neu" && renderNew()))
+    .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
+  setInterval(loadOrders, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadOrders(); });
+}
+function updateBadge(){
+  const n = orders.filter(o => o.payment === "offen" && !["abgeschlossen","storniert"].includes(o.status)).length;
+  document.querySelectorAll("[data-badge]").forEach(b => { const was = b.textContent; b.hidden = !n; b.textContent = n; if (n && was !== String(n)) IH.bump(b); });
+}
+
+/* ---------- routing ---------- */
+function route(){
+  const h = location.hash.replace("#", "");
+  const next = ["kasse","neu"].includes(h) ? h : "kasse";
+  const changed = next !== current;
+  current = next;
+  $("v-kasse").hidden = current !== "kasse"; $("v-neu").hidden = current !== "neu";
+  document.querySelectorAll(".tab, .bnav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + current ? "page" : "false"));
+  const v = $("v-" + current);
+  if (changed){ v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); document.querySelector(".content").scrollTop = 0; }
+  if (current === "kasse") renderBoard([]); else renderNew();
+}
+addEventListener("hashchange", () => { if (staff) route(); });
+
+/* ========== BOARD ========== */
+function ticket(o, fresh){
+  const paid = o.payment !== "offen";
+  const ref = paid && o.paid_at ? o.paid_at : o.created_at;
+  const late = (!paid && minsAgo(o.created_at) >= 10) || (paid && o.status !== "fertig" && minsAgo(ref) >= 20);
+  const lines = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? ` <em class="muted">(${esc(i.note)})</em>` : ""}</span></li>`).join("");
+  const meta = [];
+  if (o.customer_name) meta.push(`<b>${esc(o.customer_name)}</b>`);
+  if (o.phone) meta.push(esc(o.phone));
+  if (o.address) meta.push(esc(o.address));
+  meta.push(SRC[o.source] || o.source);
+  let actions = "";
+  if (!paid){
+    actions = (o.channel === "lieferung" ? `<button class="btn" type="button" data-pay="${o.id}" data-m="bei_lieferung">Bei Lieferung</button>` : "")
+      + `<button class="btn" type="button" data-pay="${o.id}" data-m="karte">Karte</button>`
+      + `<button class="btn primary" type="button" data-pay="${o.id}" data-m="bar">Bar bezahlt</button>`;
+  } else if (o.status === "fertig"){
+    actions = `<button class="btn" type="button" data-back="${o.id}">Zurück</button><button class="btn ok" type="button" data-next="${o.id}" data-to="abgeschlossen">${o.channel === "lieferung" ? "Ausgeliefert" : "Ausgegeben"}</button>`;
+  } else {
+    actions = `<button class="btn" type="button" data-unpay="${o.id}">Zahlung zurück</button><button class="btn primary" type="button" data-next="${o.id}" data-to="fertig">Fertig</button>`;
+  }
+  const payPill = paid ? `<span class="pill fertig">${PAY[o.payment]}${o.payment === "online" && PM[o.pay_method] ? " · " + PM[o.pay_method] : ""}</span>` : "";
+  const cookPill = paid && o.status === "zubereitung" ? `<span class="pill zubereitung">Wird zubereitet</span>` : "";
+  return `<article class="ticket ${paid ? o.status : "neu"}${fresh ? " fresh" : ""}" data-k="o${o.id}">
+    <div class="t-head"><span class="t-no">#${o.id}</span><span class="t-where">${where(o)}</span>
+      <span class="t-time${late ? " late" : ""}" title="eingegangen ${hhmm(o.created_at)} Uhr">${hhmm(o.created_at)} · ${minsAgo(ref)} min</span></div>
+    <div class="t-meta">${meta.join(" · ")} ${payPill} ${cookPill}</div>
+    <ul class="t-items">${lines}</ul>
+    ${o.note ? `<div class="t-note">${esc(o.note)}</div>` : ""}
+    <div class="t-foot"><span class="sum">${eur(o.total)}</span>
+      <button class="btn danger" type="button" data-cancel="${o.id}">Storno</button>${actions}</div>
+  </article>`;
+}
+let lastCounts = {};
+function renderBoard(fresh = [], flashReady = false){
+  if (current !== "kasse") return;
+  const active = orders.filter(o => !["abgeschlossen","storniert"].includes(o.status));
+  const cols = [
+    ["neu", "Zu bezahlen", active.filter(o => o.payment === "offen"), "Gast bezahlt an der Kasse → Bestellung geht in die Küche"],
+    ["zubereitung", "In der Küche", active.filter(o => o.payment !== "offen" && o.status !== "fertig").sort((a,b) => new Date(a.paid_at) - new Date(b.paid_at)), "Läuft auf dem Küchen-Display"],
+    ["fertig", "Fertig zur Ausgabe", active.filter(o => o.payment !== "offen" && o.status === "fertig"), "Ausgeben oder ausliefern"]
+  ];
+  IH.flip($("board"), () => {
+    $("board").innerHTML = cols.map(([st, label, list, hint]) => `<div class="col" id="col-${st}"><h3><span class="pill ${st}">${label}</span><span class="n" id="n-${st}">${list.length}</span></h3><p class="hintline">${hint}</p><div class="stack">`
+      + (list.length ? list.map(o => ticket(o, fresh.includes(o.id))).join("") : `<div class="empty">Keine</div>`) + `</div></div>`).join("");
+  });
+  for (const [st, , list] of cols){ if (lastCounts[st] !== undefined && lastCounts[st] !== list.length) IH.bump($("n-" + st)); lastCounts[st] = list.length; }
+  if (flashReady){ const c = $("col-fertig"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); }
+  const done = orders.filter(o => o.status === "abgeschlossen" || o.status === "storniert").reverse();
+  $("doneSum").textContent = `Heute erledigt (${done.length})`;
+  $("doneList").innerHTML = done.map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)} · ${(o.order_items||[]).map(i => i.qty + "× " + esc(i.name_de)).join(", ")}</span><span class="pill ${o.status} hide-s">${ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Noch nichts erledigt.</div>`;
+  const B = $("board");
+  B.querySelectorAll("[data-next]").forEach(b => b.onclick = () => setStatus(+b.dataset.next, b.dataset.to));
+  B.querySelectorAll("[data-back]").forEach(b => b.onclick = () => setStatus(+b.dataset.back, "zubereitung"));
+  B.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => setPayment(+b.dataset.pay, b.dataset.m));
+  B.querySelectorAll("[data-unpay]").forEach(b => armed(b, "Wirklich zurück?", "Zahlung zurück", () => setPayment(+b.dataset.unpay, "offen")));
+  B.querySelectorAll("[data-cancel]").forEach(b => armed(b, "Wirklich stornieren?", "Storno", () => {
+    const o = orders.find(x => x.id === +b.dataset.cancel);
+    setStatus(o.id, "storniert");
+    if (o.payment === "online") IH.toast("Online-Zahlung im Stripe-Dashboard erstatten", "err");
+  }));
+}
+function armed(b, ask, label, go){
+  b.onclick = () => {
+    if (b.dataset.armed){ go(); return; }
+    b.dataset.armed = "1"; b.textContent = ask; IH.bump(b);
+    setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = label; } }, 3500);
+  };
+}
+async function setPayment(id, payment){
+  const o = orders.find(x => x.id === id);
+  const patch = payment === "offen" ? { payment, status: "neu" } : { payment };
+  if (o){ Object.assign(o, patch); if (payment !== "offen") o.paid_at = new Date().toISOString(); lastState.set(o.id, { status: o.status, payment: o.payment }); renderBoard(); updateBadge(); }
+  const { error } = await sb.from("orders").update(patch).eq("id", id);
+  if (error){ IH.toast("Zahlung konnte nicht gespeichert werden", "err"); loadOrders(); return; }
+  if (payment !== "offen"){ IH.sound.paid(); IH.toast(`#${id} bezahlt → Küche`); }
+}
+async function setStatus(id, status){
+  const o = orders.find(x => x.id === id);
+  if (o){ o.status = status; lastState.set(o.id, { status, payment: o.payment }); }
+  renderBoard(); updateBadge();
+  const { error } = await sb.from("orders").update({ status }).eq("id", id);
+  if (error){ IH.toast("Status konnte nicht gespeichert werden", "err"); loadOrders(); }
+}
+setInterval(() => { if (current === "kasse" && staff) renderBoard(); }, 60000);
+
+/* ========== NEW ORDER (phone / WhatsApp / counter) ========== */
+const nd = { cat: null, q: "", cart: {}, channel: "abholung", source: "telefon", payment: "offen", table: "", name: "", phone: "", address: "", note: "", err: "" };
+const ndPrice = it => nd.channel === "lieferung" ? +(it.price_delivery ?? it.price_pickup) : +it.price_pickup;
+function renderNew(){
+  if (!nd.cat && cats.length) nd.cat = cats[0].id;
+  const q = nd.q.trim().toLowerCase();
+  const list = items.filter(i => q ? (i.names.de || "").toLowerCase().includes(q) : i.category_id === nd.cat);
+  const lines = Object.entries(nd.cart).map(([id, qty]) => ({ it: items.find(i => i.id === id), qty })).filter(l => l.it);
+  const total = lines.reduce((s, l) => s + l.qty * ndPrice(l.it), 0);
+  $("v-neu").innerHTML = `<h2 class="view">Neue Bestellung</h2><div class="neworder"><div class="picker">
+    <div class="tools"><input type="search" id="ndQ" placeholder="Gericht suchen …" value="${esc(nd.q)}" aria-label="Gericht suchen"></div>
+    <div class="chips">${cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" aria-pressed="${!q && nd.cat === c.id}">${esc(c.names.de)}</button>`).join("")}</div>
+    <div class="pgrid" id="pgrid">${list.map(i => `<button type="button" class="pbtn" data-k="p${i.id}" data-add="${i.id}" ${(!i.available || i.price_pickup == null) ? "disabled" : ""}>
+        <b>${esc(i.names.de)}</b><span>${i.price_pickup == null ? "kein Preis" : eur(ndPrice(i))}${i.available ? "" : " · ausverkauft"}</span></button>`).join("") || `<p class="muted">Nichts gefunden.</p>`}</div>
+  </div>
+  <div class="panel">
+    <h3>Bestellung</h3>
+    <div id="olines">${lines.map(l => `<div class="oline" data-k="l${l.it.id}"><span>${esc(l.it.names.de)}</span><span class="qty"><button type="button" data-q="-1" data-id="${l.it.id}" aria-label="weniger">−</button><span>${l.qty}</span><button type="button" data-q="1" data-id="${l.it.id}" aria-label="mehr">+</button></span><span class="num">${eur(l.qty * ndPrice(l.it))}</span></div>`).join("") || `<p class="muted" style="margin:0">Gerichte links antippen.</p>`}</div>
+    <div class="total"><span>Summe</span><span class="num" id="ndTotal">${eur(total)}</span></div>
+    <div class="field"><span class="lbl">Bestellt über</span><div class="seg" id="ndSrc">${["telefon","whatsapp","theke"].map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.source === s}">${SRC[s]}</button>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Art</span><div class="seg" id="ndCh">${["abholung","lieferung","tisch"].map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.channel === s}">${CH[s]}</button>`).join("")}</div></div>
+    ${nd.channel === "tisch" ? `<div class="field"><label for="ndTable">Tischnummer</label><input id="ndTable" type="text" inputmode="numeric" maxlength="6" value="${esc(nd.table)}"></div>` : `
+    <div class="g2"><div class="field"><label for="ndName">Name</label><input id="ndName" type="text" value="${esc(nd.name)}"></div>
+    <div class="field"><label for="ndPhone">Telefon</label><input id="ndPhone" type="tel" value="${esc(nd.phone)}"></div></div>`}
+    ${nd.channel === "lieferung" ? `<div class="field"><label for="ndAddr">Adresse</label><textarea id="ndAddr" rows="2">${esc(nd.address)}</textarea></div>` : ""}
+    <div class="field"><label for="ndNote">Anmerkung</label><textarea id="ndNote" rows="2">${esc(nd.note)}</textarea></div>
+    <div class="field"><span class="lbl">Zahlung</span><div class="seg" id="ndPay">${["offen","bar","karte"].concat(nd.channel === "lieferung" ? ["bei_lieferung"] : []).map(s => `<button type="button" data-v="${s}" aria-pressed="${nd.payment === s}">${{ offen: "Noch offen", bar: "Bar", karte: "Karte", bei_lieferung: "Bei Lieferung" }[s]}</button>`).join("")}</div>
+      <span class="muted" style="font-size:13px">${nd.payment === "offen" ? "Geht erst nach dem Bezahlen in die Küche." : "Geht sofort in die Küche."}</span></div>
+    ${nd.err ? `<p class="err" role="alert">${esc(nd.err)}</p>` : ""}
+    <button type="button" class="btn big primary" id="ndSend" ${lines.length ? "" : "disabled"}>Bestellung anlegen · ${eur(total)}</button>
+  </div></div>`;
+  const V = $("v-neu");
+  const qi = $("ndQ"); qi.oninput = () => { nd.q = qi.value; const pos = qi.selectionStart; ndCapture(); renderNew(); const n = $("ndQ"); n.focus(); n.setSelectionRange(pos, pos); };
+  V.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { ndCapture(); nd.cat = b.dataset.cat; nd.q = ""; IH.flip("#pgrid", renderNew); });
+  V.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
+    ndCapture(); nd.cart[b.dataset.add] = (nd.cart[b.dataset.add] || 0) + 1;
+    IH.flyTo(b, $("ndTotal"));
+    IH.flip("#olines", renderNew); IH.bump($("ndTotal"));
+  });
+  V.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { ndCapture(); const id = b.dataset.id; nd.cart[id] += +b.dataset.q; if (nd.cart[id] <= 0) delete nd.cart[id]; renderNew(); IH.bump($("ndTotal")); });
+  $("ndSrc").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.source = b.dataset.v; renderNew(); });
+  $("ndCh").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.channel = b.dataset.v;
+    if (nd.channel === "lieferung" && nd.payment === "offen") nd.payment = "bei_lieferung";
+    if (nd.channel !== "lieferung" && nd.payment === "bei_lieferung") nd.payment = "offen"; renderNew(); });
+  $("ndPay").querySelectorAll("button").forEach(b => b.onclick = () => { ndCapture(); nd.payment = b.dataset.v; renderNew(); });
+  $("ndSend").onclick = ndSend;
+  requestAnimationFrame(() => ["ndSrc","ndCh","ndPay"].forEach(id => IH.seg($(id))));
+}
+function ndCapture(){
+  const v = id => $(id) ? $(id).value : null;
+  if (v("ndTable") !== null) nd.table = v("ndTable");
+  if (v("ndName") !== null) nd.name = v("ndName");
+  if (v("ndPhone") !== null) nd.phone = v("ndPhone");
+  if (v("ndAddr") !== null) nd.address = v("ndAddr");
+  if (v("ndNote") !== null) nd.note = v("ndNote");
+}
+async function ndSend(){
+  ndCapture(); nd.err = "";
+  const p = { channel: nd.channel, source: nd.source, payment: nd.payment, table_no: nd.channel === "tisch" ? nd.table : null,
+    name: nd.channel === "tisch" ? null : nd.name, phone: nd.channel === "tisch" ? null : nd.phone,
+    address: nd.channel === "lieferung" ? nd.address : null, note: nd.note, lang: "de",
+    items: Object.entries(nd.cart).map(([id, qty]) => ({ id, qty })) };
+  const btn = $("ndSend"); btn.disabled = true; btn.textContent = "Wird angelegt …";
+  const { data, error } = await sb.rpc("place_order", { p });
+  if (error){ nd.err = error.message; renderNew(); return; }
+  const r = btn.getBoundingClientRect(); IH.burst(r.left + r.width / 2, r.top);
+  IH.toast(`Bestellung #${data.id} angelegt`);
+  Object.assign(nd, { cart: {}, table: "", name: "", phone: "", address: "", note: "", err: "", payment: nd.channel === "lieferung" ? "bei_lieferung" : "offen" });
+  renderNew(); loadOrders();
+}
+
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>

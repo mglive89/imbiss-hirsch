@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Abholung</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/abholung-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/abholung-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Abholung">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Dining-room TV: left = being prepared (small), right = ready (huge, green). Numbers glide from left to right when done. */
+:root{--app:var(--ok)}
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column;font-size:18px}
+.head{flex:none;display:flex;align-items:center;gap:16px;padding-block:14px;border-bottom:2px solid var(--line)}
+.head img{height:clamp(44px,8vh,90px);width:auto}
+.head .sp{flex:1}
+.head .msg{font-family:var(--label);font-weight:600;font-size:clamp(16px,2.4vh,26px);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);overflow:hidden;white-space:nowrap;min-width:0}
+.head .msg span{display:inline-block;animation:fadeUp .6s var(--ease)}
+.clock{font-family:var(--label);font-weight:700;font-size:clamp(26px,4vh,44px);font-variant-numeric:tabular-nums}
+.cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:2px;background:var(--line);margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r))}
+@media (max-width:700px),(orientation:portrait) and (max-width:900px){.cols{grid-template-columns:1fr;grid-template-rows:minmax(0,.7fr) minmax(0,1.3fr)}}
+.col{background:var(--bg);padding:18px var(--gut-r) calc(18px + env(safe-area-inset-bottom,0px)) var(--gut-l);display:flex;flex-direction:column;min-height:0;position:relative;overflow:hidden}
+.ready.col{background:radial-gradient(ellipse at 70% 0%,rgba(127,191,95,.10),transparent 60%),var(--bg)}
+.col h2{margin:0 0 4px;font-family:var(--label);font-weight:700;font-size:clamp(26px,4.4vh,52px);text-transform:uppercase;letter-spacing:.05em;line-height:1}
+.col .sub{font-family:var(--label);font-weight:600;font-size:clamp(14px,2vh,22px);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:16px}
+.prep h2{color:var(--warn)}
+.ready h2{color:var(--ok)}
+.list{flex:1;min-height:0;overflow:hidden;display:flex;flex-wrap:wrap;align-content:flex-start;gap:12px}
+.n{font-family:var(--display);line-height:1;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;will-change:transform}
+.prep .n{font-size:clamp(30px,5vh,58px);color:var(--muted);background:var(--surface);padding:10px 16px;min-width:2.6em;position:relative;overflow:hidden}
+.prep .n::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(229,181,74,.12) 50%,transparent 70%);animation:cook 2.4s linear infinite}
+@keyframes cook{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.ready .n{font-size:clamp(54px,11vh,140px);color:#0f1a0a;background:var(--ok);padding:14px 22px;min-width:2.4em;box-shadow:0 10px 40px rgba(127,191,95,.25)}
+.n small{font-family:var(--label);font-weight:700;font-size:.26em;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.prep .n small{color:var(--faint)}
+.n.fresh{animation:readyPop 1.2s var(--spring) both, readyGlow 1.2s 1.2s ease-in-out 5}
+@keyframes readyPop{0%{transform:scale(.4);opacity:0}55%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+@keyframes readyGlow{50%{box-shadow:0 0 0 10px rgba(127,191,95,.35),0 10px 40px rgba(127,191,95,.4);background:#9ad67d}}
+.empty{font-family:var(--label);font-weight:600;font-size:clamp(18px,3vh,30px);color:var(--faint);text-transform:uppercase;letter-spacing:.06em;border:0;padding:0;text-align:left}
+.big-ready{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:radial-gradient(circle,rgba(127,191,95,.35),rgba(13,12,11,.92) 65%);pointer-events:none;opacity:0;transition:opacity .4s}
+.big-ready.show{opacity:1}
+.big-ready div{text-align:center}
+.big-ready b{display:block;font-family:var(--display);font-size:min(36vh,40vw);line-height:1;color:var(--ok);text-shadow:0 10px 60px rgba(127,191,95,.5)}
+.big-ready span{font-family:var(--label);font-weight:700;font-size:min(6vh,7vw);letter-spacing:.1em;text-transform:uppercase}
+.big-ready.show div{animation:readyPop 1s var(--spring) both}
+</style>
+</head>
+<body>
+<header class="head">
+  <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+  <span class="msg" id="msg"><span>Willkommen · Welcome · Benvenuti · Hoş geldiniz</span></span>
+  <span class="sp"></span>
+  <span class="conn" id="conn" title="Verbindung"></span>
+  <span class="clock" id="clock">--:--</span>
+</header>
+<div class="cols" id="cols">
+  <section class="col prep"><h2>In Zubereitung</h2><div class="sub">Preparing · In preparazione · Hazırlanıyor</div><div class="list" id="prep"></div></section>
+  <section class="col ready"><h2>Bitte abholen</h2><div class="sub">Ready for pickup · Pronto da ritirare · Hazır</div><div class="list" id="ready" aria-live="polite"></div></section>
+</div>
+<div class="big-ready" id="big" aria-hidden="true"><div><b id="bigNo"></b><span id="bigTx"></span></div></div>
+
+<div class="starter" id="starter">
+  <div>
+    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <p class="appname">Abhol-Anzeige</p>
+    <p>Für den Bildschirm im Gastraum. Antippen, damit der Ton bei fertigen Bestellungen klingelt.</p>
+    <button class="btn big primary" type="button" id="startBtn">Anzeige starten</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script>
+const { $, esc } = IH;
+const sb = IH.client({ auth: { persistSession: false } });
+let known = null;
+const freshUntil = {};
+const label = o => o.channel === "tisch" && o.table_no ? `Tisch ${esc(o.table_no)}` : o.channel === "lieferung" ? "Lieferung" : "Abholung";
+
+async function load(){
+  const { data, error } = await sb.rpc("ready_board");
+  $("conn").classList.toggle("off", !!error);
+  if (error || !Array.isArray(data)) return;
+  const board = data.filter(o => o.channel !== "lieferung");
+  const ready = board.filter(o => o.status === "fertig"), prep = board.filter(o => o.status !== "fertig");
+  let fresh = [];
+  if (known){ fresh = ready.filter(o => !known.has(o.id)); fresh.forEach(o => freshUntil[o.id] = Date.now() + 9000); }
+  known = new Set(ready.map(o => o.id));
+  // numbers keep the same key in both columns, so a finished order glides from left to right
+  IH.flip($("cols"), () => {
+    $("prep").innerHTML = prep.length ? prep.map(o => `<div class="n" data-k="n${o.id}">${o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
+    $("ready").innerHTML = ready.length ? ready.slice().reverse().map(o => `<div class="n${freshUntil[o.id] > Date.now() ? " fresh" : ""}" data-k="n${o.id}">${o.id}<small>${label(o)}</small></div>`).join("") : `<div class="empty">—</div>`;
+  });
+  if (fresh.length) announce(fresh[fresh.length - 1]);
+}
+let bigT;
+function announce(o){
+  IH.sound.ready();
+  $("bigNo").textContent = o.id; $("bigTx").textContent = label(o).replace(/<[^>]+>/g, "");
+  $("big").classList.add("show");
+  setTimeout(() => IH.burst(innerWidth / 2, innerHeight / 2), 300);
+  clearTimeout(bigT); bigT = setTimeout(() => $("big").classList.remove("show"), 4200);
+}
+
+// rotating welcome line in the header
+const MSG = ["Willkommen · Welcome · Benvenuti · Hoş geldiniz", "Täglich frisch aus 100 % Hochrippe", "Bestellen per QR-Code am Tisch", "Tantuni & Burger seit 1975"];
+let mi = 0;
+setInterval(() => { mi = (mi + 1) % MSG.length; $("msg").innerHTML = `<span>${esc(MSG[mi])}</span>`; }, 8000);
+
+IH.clock($("clock"));
+$("startBtn").onclick = () => {
+  IH.sound.unlock(); IH.sound.received();
+  try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
+  $("starter").classList.add("out"); setTimeout(() => $("starter").hidden = true, 350);
+  IH.keepAwake();
+};
+load(); setInterval(load, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "Imbiss Küche",
+  "short_name": "Küche",
+  "description": "Küchen-Display von Imbiss Hirsch: bezahlte Bestellungen, Start → Fertig",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0d0c0b",
+  "theme_color": "#0d0c0b",
+  "lang": "de",
+  "icons": [
+    { "src": "../assets/icons/kueche-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "../assets/icons/kueche-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "../assets/icons/kueche-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

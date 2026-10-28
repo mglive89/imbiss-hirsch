@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="de" class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Dashboard</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/dashboard-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/dashboard-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Dashboard: sidebar navigation on wide screens, bottom bar on phones. Overview reads top-down: KPIs → when → what → list. */
+:root{--app:var(--info)}
+.layout{flex:1;min-height:0;display:flex}
+.side{flex:none;width:220px;border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:4px;margin-left:calc(-1 * var(--gut-l));padding-left:max(10px,env(safe-area-inset-left,0px));overflow-y:auto}
+.side a{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--muted);font-family:var(--label);font-weight:600;font-size:16px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-radius:10px;position:relative;transition:color .2s,background-color .2s}
+.side a:hover{color:var(--fg)}
+.side a[aria-current="page"]{color:var(--fg);background:var(--surface)}
+.side a[aria-current="page"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--app);animation:growY .35s var(--ease)}
+.side svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.side .grp{font-family:var(--label);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:16px 12px 4px}
+.layout .content{margin-inline:0 calc(-1 * var(--gut-r))}
+@media (max-width:760px){.side{display:none}.layout .content{margin-inline:calc(-1 * var(--gut-l)) calc(-1 * var(--gut-r))}}
+
+.daynav{display:flex;align-items:center;gap:6px}
+.daynav input{max-width:170px;font-size:15px;font-family:var(--body);letter-spacing:0;padding:9px 10px}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:var(--label);font-weight:700;font-size:13px;letter-spacing:.12em;color:var(--ok);text-transform:uppercase}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(127,168,217,.10),transparent 70%)}
+.kpi .k{font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.kpi .v{font-family:var(--label);font-weight:700;font-size:clamp(26px,6.4vw,36px);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px}
+.kpi .d{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:13px;font-weight:500;border-radius:999px;padding:1px 8px;background:var(--surface-2);color:var(--muted)}
+.kpi .d.up{color:var(--ok)} .kpi .d.down{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.box h3{font-family:var(--label);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 14px;display:flex;align-items:baseline;gap:8px}
+.box h3 small{font-family:var(--body);font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint);font-size:13px;margin-left:auto}
+.bars{display:grid;gap:6px;align-items:end;height:170px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to top,transparent 0 41px,rgba(255,255,255,.04) 41px 42px)}
+.bars .b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;min-width:0}
+.bars .b i{display:block;width:100%;max-width:38px;border-radius:6px 6px 2px 2px;background:linear-gradient(to top,rgba(201,162,116,.55),var(--kraft));min-height:2px;transform-origin:bottom}
+.bars .b.today i{background:linear-gradient(to top,rgba(127,168,217,.5),var(--info))}
+.bars .b em{font-style:normal;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.grow .bars .b i{animation:growY .8s var(--ease) both;animation-delay:calc(var(--i) * 55ms)}
+.axis{display:grid;gap:6px;margin-top:6px}
+.axis span{font-size:11px;color:var(--faint);text-align:center;font-variant-numeric:tabular-nums}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.split{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--surface-2)}
+.split i{display:block;height:100%;transform-origin:left}
+.grow .split i{animation:growX .9s var(--ease) both}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend b{font-variant-numeric:tabular-nums;font-weight:500}
+.splits{display:grid;gap:18px}
+.toplist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.toplist li{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:15px;position:relative;padding:5px 9px;border-radius:8px;overflow:hidden}
+.toplist li i{position:absolute;inset:0 auto 0 0;background:rgba(201,162,116,.16);z-index:0;transform-origin:left}
+.grow .toplist li i{animation:growX .9s var(--ease) both;animation-delay:calc(var(--i) * 60ms)}
+.toplist li span,.toplist li b{position:relative;z-index:1}
+.toplist b{font-variant-numeric:tabular-nums;font-weight:500}
+.dl{display:grid;gap:6px}
+.dl-row{display:grid;grid-template-columns:64px 60px 1fr auto auto;gap:10px;align-items:center;background:var(--bg);border-radius:10px;padding:8px 12px;font-size:14px}
+.dl-row .x1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.dl-row{grid-template-columns:56px 1fr auto}.dl-row .hide-s{display:none}}
+
+/* menu editor */
+.mtools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.mtools input{max-width:320px}
+.mcat{margin-bottom:26px}
+.mcat h3{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) 96px 96px 70px 140px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);transition:background-color .3s}
+.mrow.saved{animation:savedFlash 1s ease}
+@keyframes savedFlash{30%{background:rgba(127,191,95,.12)}}
+.mrow .nm{min-width:0}
+.mrow .nm b{font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;display:block}
+.mrow .nm small{color:var(--faint);font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow input[type=number]{padding:8px;text-align:right;font-variant-numeric:tabular-nums}
+.mhead{display:grid;grid-template-columns:minmax(0,1fr) 96px 96px 70px 140px;gap:10px;color:var(--faint);font-size:12px;font-family:var(--label);letter-spacing:.1em;text-transform:uppercase}
+.mhead span:nth-child(n+2){text-align:center}
+.switch{position:relative;width:52px;height:30px;border-radius:15px;border:0;background:#3a2620;cursor:pointer;justify-self:center;transition:background-color .3s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#c9b9ad;transition:transform .35s var(--spring),background-color .3s}
+.switch[aria-checked="true"]{background:#36502a}
+.switch[aria-checked="true"]::after{transform:translateX(22px);background:#cfe8bf}
+@media (max-width:640px){
+  .mhead{display:none}
+  .mrow{grid-template-columns:1fr 1fr 1fr;grid-template-areas:"nm nm nm" "pp pd av" "ed ed ed"}
+  .mrow .nm{grid-area:nm}.mrow .pp{grid-area:pp}.mrow .pd{grid-area:pd}.mrow .av{grid-area:av}.mrow .ed{grid-area:ed;justify-self:start}
+  .mrow .pp::before{content:"Abholen"}.mrow .pd::before{content:"Liefern"}
+}
+.mini{display:flex;flex-direction:column;gap:2px}
+.mini::before{font-size:11px;color:var(--faint);font-family:var(--label);letter-spacing:.1em;text-transform:uppercase}
+.dialog .grid{display:grid;gap:12px}
+.lgrid{display:grid;grid-template-columns:44px 1fr;gap:8px 10px;align-items:center}
+.lgrid .lc{font-family:var(--label);font-weight:700;color:var(--muted);letter-spacing:.08em}
+.dialog .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.dialog .actions .sp{flex:1}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.g2{grid-template-columns:1fr}}
+
+/* QR */
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:14px}
+.qcard{background:#f6f2ea;color:#111;border-radius:14px;overflow:hidden;text-align:center;display:flex;flex-direction:column}
+.qcard .top{background:#0d0c0b;padding:10px}
+.qcard .top img{width:80%;height:auto}
+.qcard .qr{display:flex;justify-content:center;margin:12px auto 6px;background:#fff;padding:6px;width:fit-content}
+.qcard .qr img,.qcard .qr canvas{width:150px!important;height:150px!important}
+.qcard .tn{font-family:var(--label);font-weight:700;font-size:22px;letter-spacing:.06em;text-transform:uppercase;color:#7a5a33}
+.qcard .ll{font-family:var(--label);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.qcard .btn{margin:0 10px 10px;background:#111;color:#f6f2ea;border-color:#111}
+
+/* team + apps */
+.team{display:grid;gap:8px;margin-top:12px}
+.trow{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:12px;padding:10px 12px;flex-wrap:wrap}
+.trow .em{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.appcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;transition:transform .25s var(--ease),border-color .25s}
+.appcard:hover{transform:translateY(-3px);border-color:#4a453f}
+.appcard .h{display:flex;align-items:center;gap:12px}
+.appcard img{width:56px;height:56px;border-radius:14px}
+.appcard b{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em}
+.appcard p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.appcard code{font-size:12px;color:var(--faint);word-break:break-all}
+.appcard .row{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body class="has-bnav">
+
+<div id="app" hidden>
+  <header class="appbar">
+    <a class="brand" href="#uebersicht"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Dashboard</b></a>
+    <span class="sp"></span>
+    <span class="conn" id="conn" title="Live-Verbindung"></span>
+    <span class="who" data-who></span>
+    <button class="btn ghost" type="button" data-logout>Abmelden</button>
+  </header>
+  <div class="layout">
+    <nav class="side" aria-label="Bereiche">
+      <span class="grp">Auswertung</span>
+      <a href="#uebersicht"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Übersicht</a>
+      <span class="grp">Verwalten</span>
+      <a href="#karte"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h6"/></svg>Speisekarte</a>
+      <a href="#qr"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7"/></svg>QR-Codes</a>
+      <a href="#team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Team</a>
+      <span class="grp">System</span>
+      <a href="#apps"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>Apps</a>
+    </nav>
+    <main class="content"><div class="inner">
+      <section id="v-uebersicht"></section>
+      <section id="v-karte" hidden></section>
+      <section id="v-qr" hidden></section>
+      <section id="v-team" hidden></section>
+      <section id="v-apps" hidden></section>
+    </div></main>
+  </div>
+  <nav class="bnav" aria-label="Bereiche">
+    <a href="#uebersicht"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Übersicht</a>
+    <a href="#karte"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h6"/></svg>Karte</a>
+    <a href="#qr"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7"/></svg>QR</a>
+    <a href="#team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Team</a>
+    <a href="#apps"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>Apps</a>
+  </nav>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="dialog" id="dialog" role="dialog" aria-modal="true" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script src="../shared/staff.js"></script>
+<script>
+const { $, esc, eur, hhmm, where, CH, SRC, ST, PAY, PM, store } = IH;
+const LANGS = ["de","en","it","tr","fr"];
+let sb, me, staff, cats = [], items = [], current = null;
+
+IH.splash("../assets/logo.jpg", "Dashboard");
+IH.staffGate({ app: "Dashboard", onReady: async (ctx) => {
+  ({ sb, me, staff } = ctx);
+  await loadMenu();
+  subscribe();
+  route();
+}});
+
+/* ---------- dialog ---------- */
+function openDialog(html){ $("dialog").innerHTML = html; IH.open($("dialog"), $("scrim")); }
+function closeDialog(){ IH.close($("dialog"), $("scrim"), () => $("dialog").innerHTML = ""); }
+$("scrim").onclick = closeDialog;
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("dialog").hidden) closeDialog(); });
+
+/* ---------- data ---------- */
+async function loadMenu(){
+  const [c, i] = await Promise.all([sb.from("categories").select("*").order("sort"), sb.from("menu_items").select("*").order("sort")]);
+  if (c.error || i.error) return IH.toast("Speisekarte konnte nicht geladen werden", "err");
+  cats = c.data; items = i.data;
+}
+let liveT;
+function subscribe(){
+  sb.channel("dashboard")
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+      if (current === "uebersicht" && statsDay === IH.berlinToday()){ clearTimeout(liveT); liveT = setTimeout(() => renderStats(false), 1200); }
+    })
+    .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
+}
+
+/* ---------- routing ---------- */
+const VIEWS = ["uebersicht","karte","qr","team","apps"];
+function route(){
+  const h = location.hash.replace("#", "");
+  const next = VIEWS.includes(h) ? h : "uebersicht";
+  const changed = next !== current; current = next;
+  VIEWS.forEach(v => $("v-" + v).hidden = v !== current);
+  document.querySelectorAll(".side a, .bnav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + current ? "page" : "false"));
+  const v = $("v-" + current);
+  if (changed){ v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); document.querySelector(".content").scrollTop = 0; }
+  ({ uebersicht: () => renderStats(true), karte: renderMenuEditor, qr: renderQR, team: renderTeam, apps: renderApps })[current]();
+}
+addEventListener("hashchange", () => { if (staff) route(); });
+
+/* ========== OVERVIEW ========== */
+let statsDay = IH.berlinToday();
+const prevKpi = {};
+const DOW = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+async function renderStats(animate){
+  const V = $("v-uebersicht");
+  const isToday = statsDay === IH.berlinToday();
+  if (animate || !V.innerHTML){
+    V.innerHTML = `${head(isToday)}<div class="kpis">${[1,2,3,4].map(() => `<div class="kpi skeleton" style="height:112px"></div>`).join("")}</div>
+      <div class="grid2"><div class="box skeleton" style="height:240px"></div><div class="box skeleton" style="height:240px"></div></div>`;
+    wireDay();
+  }
+  const from = IH.dayRange(IH.addDays(statsDay, -6))[0], to = IH.dayRange(statsDay)[1];
+  const { data, error } = await sb.from("orders").select("id,created_at,total,status,channel,source,payment,pay_method,customer_name,table_no,order_items(name_de,qty,unit_price)")
+    .gte("created_at", from).lt("created_at", to).order("created_at");
+  if (error){ V.innerHTML = head(isToday) + `<div class="empty">Konnte nicht geladen werden.</div>`; wireDay(); return; }
+  const dayOf = o => { const p = IH.berlinParts(new Date(o.created_at)); return `${p.year}-${p.month}-${p.day}`; };
+  const byDay = {}; for (const o of data) (byDay[dayOf(o)] ||= []).push(o);
+  const all = byDay[statsDay] || [], ok = all.filter(o => o.status !== "storniert");
+  const prevOk = (byDay[IH.addDays(statsDay, -1)] || []).filter(o => o.status !== "storniert");
+  const sum = arr => arr.reduce((s, o) => s + +o.total, 0);
+  const rev = sum(ok), prevRev = sum(prevOk), avg = ok.length ? rev / ok.length : 0, prevAvg = prevOk.length ? prevRev / prevOk.length : 0;
+  const hours = Array.from({ length: 9 }, (_, k) => 11 + k);
+  const perH = hours.map(hr => ok.filter(o => +IH.berlinParts(new Date(o.created_at)).hour === hr).reduce((s, o) => s + +o.total, 0));
+  const week = Array.from({ length: 7 }, (_, k) => IH.addDays(statsDay, k - 6)).map(d => ({ d, v: sum((byDay[d] || []).filter(o => o.status !== "storniert")) }));
+  const top = {}; ok.forEach(o => (o.order_items || []).forEach(i => { (top[i.name_de] ||= { q: 0, r: 0 }); top[i.name_de].q += i.qty; top[i.name_de].r += i.qty * +i.unit_price; }));
+  const topList = Object.entries(top).sort((a, b) => b[1].q - a[1].q).slice(0, 8);
+  const maxQ = Math.max(1, ...topList.map(t => t[1].q));
+  const chSplit = [["tisch","Tisch","var(--kraft)"],["abholung","Abholung","var(--info)"],["lieferung","Lieferung","var(--ok)"]].map(([k, l, c]) => ({ l, c, n: ok.filter(o => o.channel === k).length }));
+  const payKey = o => o.payment === "online" ? "online" : o.payment === "karte" ? "karte" : "bar";
+  const paySplit = [["bar","Bar","var(--kraft)"],["karte","Karte","var(--info)"],["online","Online","var(--ok)"]].map(([k, l, c]) => ({ l, c, n: sum(ok.filter(o => o.payment !== "offen" && payKey(o) === k)) }));
+  const delta = (a, b, fmt) => { if (!b) return `<span class="d">Vortag: –</span>`; const p = Math.round((a - b) / b * 100); return `<span class="d ${p >= 0 ? "up" : "down"}">${p >= 0 ? "▲" : "▼"} ${Math.abs(p)} % · Vortag ${fmt(b)}</span>`; };
+  const split = (arr, fmt) => { const tot = arr.reduce((s, x) => s + x.n, 0) || 1; return `<div class="split">${arr.map(x => `<i style="width:${x.n / tot * 100}%;background:${x.c}"></i>`).join("")}</div>
+    <div class="legend">${arr.map(x => `<span><i style="background:${x.c}"></i>${x.l} <b>${fmt(x.n)}</b> <span class="muted">${Math.round(x.n / tot * 100)} %</span></span>`).join("")}</div>`; };
+  const maxH = Math.max(1, ...perH), maxW = Math.max(1, ...week.map(w => w.v));
+  const g = animate ? " grow" : "";
+  V.innerHTML = `${head(isToday)}
+  <div class="kpis">
+    <div class="kpi"><div class="k">Umsatz</div><div class="v" id="k-rev">${eur(rev)}</div>${delta(rev, prevRev, eur)}</div>
+    <div class="kpi"><div class="k">Bestellungen</div><div class="v" id="k-n">${ok.length}</div>${delta(ok.length, prevOk.length, x => x)}</div>
+    <div class="kpi"><div class="k">Ø Bon</div><div class="v" id="k-avg">${eur(avg)}</div>${delta(avg, prevAvg, eur)}</div>
+    <div class="kpi"><div class="k">Storniert</div><div class="v" id="k-st">${all.length - ok.length}</div><span class="d">${eur(sum(all.filter(o => o.status === "storniert")))}</span></div>
+  </div>
+  <div class="grid2${g}">
+    <div class="box"><h3>Umsatz pro Stunde<small>11–19 Uhr</small></h3>
+      <div class="bars" style="grid-template-columns:repeat(${hours.length},1fr)">${perH.map((v, k) => `<div class="b" style="--i:${k}"><em>${v ? Math.round(v) + " €" : ""}</em><i style="height:${v / maxH * 82}%"></i></div>`).join("")}</div>
+      <div class="axis" style="grid-template-columns:repeat(${hours.length},1fr)">${hours.map(h => `<span>${h}</span>`).join("")}</div></div>
+    <div class="box"><h3>Letzte 7 Tage<small>Umsatz</small></h3>
+      <div class="bars" style="grid-template-columns:repeat(7,1fr)">${week.map((w, k) => `<div class="b${w.d === statsDay ? " today" : ""}" style="--i:${k}"><em>${w.v ? Math.round(w.v) + " €" : ""}</em><i style="height:${w.v / maxW * 82}%"></i></div>`).join("")}</div>
+      <div class="axis" style="grid-template-columns:repeat(7,1fr)">${week.map(w => `<span>${DOW[new Date(w.d + "T12:00:00Z").getUTCDay()]} ${w.d.slice(8)}.</span>`).join("")}</div></div>
+    <div class="box"><h3>Meistbestellt</h3>${topList.length ? `<ol class="toplist">${topList.map(([n, v], k) => `<li style="--i:${k}"><i style="width:${v.q / maxQ * 100}%"></i><span>${esc(n)}</span><b>${v.q}× · ${eur(v.r)}</b></li>`).join("")}</ol>` : `<div class="empty">Noch keine Bestellungen an diesem Tag.</div>`}</div>
+    <div class="box"><h3>Aufteilung</h3><div class="splits">
+      <div><div class="lbl" style="margin-bottom:8px">Bestellart</div>${split(chSplit, x => x)}</div>
+      <div><div class="lbl" style="margin-bottom:8px">Zahlung</div>${split(paySplit, eur)}</div></div></div>
+  </div>
+  <div class="box" style="margin-top:16px"><h3>Alle Bestellungen<small>${all.length}</small></h3><div class="dl">${all.slice().reverse().map(o => `<div class="dl-row"><b>#${o.id}</b><span class="num">${hhmm(o.created_at)}</span><span class="x1">${where(o)} · ${SRC[o.source]}${o.customer_name ? " · " + esc(o.customer_name) : ""}${o.payment !== "offen" ? " · " + PAY[o.payment] : ""}</span><span class="pill ${o.status} hide-s">${ST[o.status]}</span><span class="num">${eur(o.total)}</span></div>`).join("") || `<div class="empty">Keine.</div>`}</div></div>`;
+  wireDay();
+  const num = x => Math.round(x);
+  IH.countUp($("k-rev"), rev, eur, animate ? 0 : prevKpi.rev);
+  IH.countUp($("k-n"), ok.length, num, animate ? 0 : prevKpi.n);
+  IH.countUp($("k-avg"), avg, eur, animate ? 0 : prevKpi.avg);
+  IH.countUp($("k-st"), all.length - ok.length, num, animate ? 0 : prevKpi.st);
+  Object.assign(prevKpi, { rev, n: ok.length, avg, st: all.length - ok.length });
+}
+function head(isToday){
+  const label = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(new Date(statsDay + "T12:00:00"));
+  return `<h2 class="view">${esc(label)}${isToday ? ` <span class="live"><span class="conn"></span>Live</span>` : ""}<span class="sp"></span>
+    <span class="daynav"><button class="iconbtn" type="button" id="dPrev" aria-label="Vortag"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <input type="date" id="sDay" value="${statsDay}" aria-label="Tag">
+    <button class="iconbtn" type="button" id="dNext" aria-label="Nächster Tag" ${isToday ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></span></h2>`;
+}
+function wireDay(){
+  const go = d => { statsDay = d > IH.berlinToday() ? IH.berlinToday() : d; renderStats(true); };
+  $("sDay").onchange = () => go($("sDay").value || IH.berlinToday());
+  $("dPrev").onclick = () => go(IH.addDays(statsDay, -1));
+  $("dNext").onclick = () => go(IH.addDays(statsDay, 1));
+}
+
+/* ========== MENU EDITOR ========== */
+let mq = "";
+function renderMenuEditor(){
+  const q = mq.trim().toLowerCase();
+  let h = `<h2 class="view">Speisekarte<span class="sp"></span><span class="muted" style="font-size:15px;font-family:var(--body);text-transform:none;font-weight:400">Änderungen sind sofort bei Gästen und an der Kasse sichtbar</span></h2>
+    <div class="mtools"><input type="search" id="mQ" placeholder="Gericht suchen …" value="${esc(mq)}" aria-label="Gericht suchen"></div>`;
+  for (const c of cats){
+    const list = items.filter(i => i.category_id === c.id && (!q || (i.names.de || "").toLowerCase().includes(q)));
+    if (q && !list.length) continue;
+    h += `<div class="mcat"><h3>${esc(c.names.de)}<button class="btn" type="button" data-newin="${esc(c.id)}">+ Gericht</button></h3>
+      <div class="mhead"><span>Gericht</span><span>Abholen €</span><span>Liefern €</span><span>Aktiv</span><span></span></div>`
+      + list.map(i => `<div class="mrow" data-id="${i.id}" data-rv>
+        <div class="nm"><b>${esc(i.names.de)}</b><small>${esc(i.descs?.de || "")}</small></div>
+        <label class="pp mini"><input type="number" step="0.10" min="0" inputmode="decimal" data-f="price_pickup" value="${i.price_pickup != null ? (+i.price_pickup).toFixed(2) : ""}" placeholder="–" aria-label="Preis Abholen ${esc(i.names.de)}"></label>
+        <label class="pd mini"><input type="number" step="0.10" min="0" inputmode="decimal" data-f="price_delivery" value="${i.price_delivery != null ? (+i.price_delivery).toFixed(2) : ""}" placeholder="–" aria-label="Preis Liefern ${esc(i.names.de)}"></label>
+        <button type="button" class="switch av" role="switch" aria-checked="${i.available}" aria-label="Verfügbar: ${esc(i.names.de)}" data-av="${i.id}"></button>
+        <button type="button" class="btn ed" data-edit="${i.id}">Bearbeiten</button>
+      </div>`).join("") + `</div>`;
+  }
+  const V = $("v-karte"); V.innerHTML = h; IH.reveal(V);
+  const mi = $("mQ"); mi.oninput = () => { mq = mi.value; const p = mi.selectionStart; renderMenuEditor(); const n = $("mQ"); n.focus(); n.setSelectionRange(p, p); };
+  V.querySelectorAll("input[data-f]").forEach(inp => inp.onchange = async () => {
+    const row = inp.closest(".mrow"), id = row.dataset.id, f = inp.dataset.f;
+    const val = inp.value === "" ? null : Math.round(parseFloat(inp.value.replace(",", ".")) * 100) / 100;
+    const { error } = await sb.from("menu_items").update({ [f]: val }).eq("id", id);
+    if (error) return IH.toast("Preis konnte nicht gespeichert werden", "err");
+    items.find(x => x.id === id)[f] = val; row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved"); IH.toast("Preis gespeichert");
+  });
+  V.querySelectorAll("[data-av]").forEach(b => b.onclick = async () => {
+    const id = b.dataset.av, it = items.find(x => x.id === id), val = !it.available;
+    b.setAttribute("aria-checked", val);
+    const { error } = await sb.from("menu_items").update({ available: val }).eq("id", id);
+    if (error){ b.setAttribute("aria-checked", !val); return IH.toast("Konnte nicht gespeichert werden", "err"); }
+    it.available = val; IH.toast(val ? `${it.names.de}: wieder verfügbar` : `${it.names.de}: ausverkauft`);
+  });
+  V.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => editItem(items.find(x => x.id === b.dataset.edit)));
+  V.querySelectorAll("[data-newin]").forEach(b => b.onclick = () => editItem(null, b.dataset.newin));
+}
+function editItem(it, catId){
+  const isNew = !it;
+  it = it || { names: {}, descs: {}, category_id: catId, tag: null, sort: items.filter(i => i.category_id === catId).length, available: true, price_pickup: null, price_delivery: null };
+  const lrow = (k, obj, ml) => LANGS.map(l => `<span class="lc">${l.toUpperCase()}</span>${ml ? `<textarea rows="2" data-${k}="${l}">${esc(obj?.[l] || "")}</textarea>` : `<input type="text" data-${k}="${l}" value="${esc(obj?.[l] || "")}">`}`).join("");
+  openDialog(`<h3>${isNew ? "Neues Gericht" : esc(it.names.de)}<button class="x" type="button" id="dX" aria-label="Schließen">×</button></h3>
+    <div class="grid">
+      <div class="g2">
+        <div class="field"><label for="eCat">Kategorie</label><select id="eCat">${cats.map(c => `<option value="${esc(c.id)}" ${c.id === it.category_id ? "selected" : ""}>${esc(c.names.de)}</option>`).join("")}</select></div>
+        <div class="field"><label for="eTag">Kennzeichnung</label><select id="eTag"><option value="">–</option><option value="veg" ${it.tag === "veg" ? "selected" : ""}>Vegetarisch</option><option value="house" ${it.tag === "house" ? "selected" : ""}>Hausspezialität</option></select></div>
+        <div class="field"><label for="ePP">Preis Abholen / vor Ort €</label><input id="ePP" type="number" step="0.10" min="0" value="${it.price_pickup ?? ""}"></div>
+        <div class="field"><label for="ePD">Preis Liefern €</label><input id="ePD" type="number" step="0.10" min="0" value="${it.price_delivery ?? ""}"></div>
+      </div>
+      <div class="field"><span class="lbl">Name (DE ist Pflicht; leere Sprachen zeigen den deutschen Namen)</span><div class="lgrid">${lrow("n", it.names, false)}</div></div>
+      <div class="field"><span class="lbl">Beschreibung</span><div class="lgrid">${lrow("d", it.descs, true)}</div></div>
+      <div class="field"><label for="eSort">Position in der Kategorie</label><input id="eSort" type="number" min="0" step="1" value="${it.sort ?? 0}" style="max-width:120px"></div>
+      <p class="err" id="eErr" hidden></p>
+    </div>
+    <div class="actions">
+      ${!isNew && staff.is_admin ? `<button class="btn danger" type="button" id="eDel">Löschen</button>` : ""}
+      <span class="sp"></span>
+      <button class="btn" type="button" id="eCancel">Abbrechen</button>
+      <button class="btn primary" type="button" id="eSave">Speichern</button>
+    </div>`);
+  $("dX").onclick = closeDialog; $("eCancel").onclick = closeDialog;
+  const fail = m => { $("eErr").textContent = m; $("eErr").hidden = false; };
+  $("eSave").onclick = async () => {
+    const names = {}, descs = {};
+    $("dialog").querySelectorAll("[data-n]").forEach(i => { const v = i.value.trim(); if (v) names[i.dataset.n] = v; });
+    $("dialog").querySelectorAll("[data-d]").forEach(i => { const v = i.value.trim(); if (v) descs[i.dataset.d] = v; });
+    if (!names.de) return fail("Bitte mindestens den deutschen Namen eintragen.");
+    const num = v => v === "" ? null : Math.round(parseFloat(v.replace(",", ".")) * 100) / 100;
+    const row = { category_id: $("eCat").value, tag: $("eTag").value || null, price_pickup: num($("ePP").value), price_delivery: num($("ePD").value),
+      names, descs: Object.keys(descs).length ? descs : null, sort: parseInt($("eSort").value || "0", 10) };
+    const { error } = isNew ? await sb.from("menu_items").insert(row) : await sb.from("menu_items").update(row).eq("id", it.id);
+    if (error) return fail(error.message);
+    closeDialog(); IH.toast("Gespeichert"); await loadMenu(); renderMenuEditor();
+  };
+  if ($("eDel")) $("eDel").onclick = async (e) => {
+    const b = e.currentTarget;
+    if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Wirklich löschen?"; IH.bump(b); return; }
+    const { error } = await sb.from("menu_items").delete().eq("id", it.id);
+    if (error) return fail(error.message);
+    closeDialog(); IH.toast("Gelöscht"); await loadMenu(); renderMenuEditor();
+  };
+}
+
+/* ========== QR CODES ========== */
+const kundeUrl = () => new URL("../kunde/", location.href).href;
+const logoImg = new Image(); logoImg.src = "../assets/logo.jpg";
+function renderQR(){
+  const base = store.get("ih-base2") || kundeUrl();
+  const n = +(store.get("ih-tables") || 10);
+  $("v-qr").innerHTML = `<h2 class="view">QR-Codes</h2>
+    <p class="muted" style="margin-top:0;max-width:70ch">Jeder Tisch bekommt seinen eigenen Code. Gäste sehen die Karte in ihrer Sprache, bestellen an ihren Tisch und die Tischnummer erscheint auf der Abhol-Anzeige. Druckgröße: ca. 5 × 5 cm.</p>
+    <div class="g2" style="max-width:680px"><div class="field"><label for="qBase">Adresse der Kunden-App</label><input id="qBase" type="url" value="${esc(base)}"></div>
+    <div class="field"><label for="qN">Anzahl Tische</label><input id="qN" type="number" min="1" max="60" value="${n}"></div></div>
+    <div class="qrgrid" id="qGrid"></div>`;
+  const draw = () => {
+    const b = $("qBase").value.trim().replace(/#.*$/, ""), k = Math.max(1, Math.min(60, +$("qN").value || 1));
+    store.set("ih-base2", b); store.set("ih-tables", k);
+    const sep = b.includes("?") ? "&" : "?";
+    const cards = [{ label: "Abholen & Liefern", url: b }].concat(Array.from({ length: k }, (_, i) => ({ label: `Tisch ${i + 1}`, url: `${b}${sep}tisch=${i + 1}` })));
+    $("qGrid").innerHTML = cards.map((c, i) => `<div class="qcard" data-rv><div class="top"><img src="../assets/logo.jpg" alt=""></div><div class="qr" id="qr${i}"></div><div class="tn">${esc(c.label)}</div><div class="ll">Speisekarte · Menu · Menü</div><button class="btn" type="button" data-dl="${i}">Als Bild speichern</button></div>`).join("");
+    cards.forEach((c, i) => new QRCode($("qr" + i), { text: c.url, width: 400, height: 400, correctLevel: QRCode.CorrectLevel.M }));
+    IH.reveal($("qGrid"));
+    $("qGrid").querySelectorAll("[data-dl]").forEach(btn => btn.onclick = () => saveCard(cards[+btn.dataset.dl], $("qr" + btn.dataset.dl)));
+  };
+  $("qBase").onchange = draw; $("qN").onchange = draw; draw();
+}
+function saveCard(card, qrBox){
+  const W = 800, H = 1100, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.fillStyle = "#f6f2ea"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#0d0c0b"; g.fillRect(0, 0, W, 380);
+  if (logoImg.complete && logoImg.naturalWidth){ const lw = 640, lh = lw * logoImg.naturalHeight / logoImg.naturalWidth; g.drawImage(logoImg, (W - lw) / 2, (380 - lh) / 2, lw, lh); }
+  const q = qrBox.querySelector("canvas") || qrBox.querySelector("img");
+  g.fillStyle = "#fff"; g.fillRect(200 - 16, 430 - 16, 432, 432);
+  g.drawImage(q, 200, 430, 400, 400);
+  g.fillStyle = "#7a5a33"; g.textAlign = "center"; g.font = "700 64px 'Barlow Condensed', Arial Narrow, sans-serif";
+  g.fillText(card.label.toUpperCase(), W / 2, 930);
+  g.fillStyle = "#111"; g.font = "600 30px 'Barlow Condensed', Arial Narrow, sans-serif";
+  g.fillText("SPEISEKARTE · MENU · MENÜ · MENÙ", W / 2, 990);
+  g.fillStyle = "#555"; g.font = "500 24px 'Barlow', Arial, sans-serif";
+  g.fillText("Scannen · bestellen · bezahlen", W / 2, 1040);
+  c.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `imbiss-qr-${card.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }, "image/png");
+  IH.toast("Bild gespeichert");
+}
+
+/* ========== TEAM ========== */
+function renderTeam(){
+  const V = $("v-team");
+  if (!staff.is_admin){ V.innerHTML = `<h2 class="view">Team</h2><div class="empty">Nur Admins können Mitarbeiter verwalten.</div>`; return; }
+  V.innerHTML = `<h2 class="view">Team</h2>
+    <p class="muted" style="margin-top:0;max-width:70ch">Neue Mitarbeiter öffnen Kasse, Küche oder Dashboard und tippen auf „Konto erstellen“. Danach trägst du hier ihre E-Mail ein. Ein Login gilt für alle Personal-Apps.</p>
+    <div class="g2" style="max-width:680px;align-items:end"><div class="field"><label for="tEmail">E-Mail des Mitarbeiters</label><input id="tEmail" type="email"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tAdmin"> Admin</label><button class="btn primary" type="button" id="tAdd">Freischalten</button></div></div>
+    <div class="team" id="tList"></div>`;
+  $("tAdd").onclick = async () => {
+    const { error } = await sb.rpc("add_staff", { p_email: $("tEmail").value, p_admin: $("tAdmin").checked });
+    if (error) return IH.toast(error.message, "err");
+    IH.toast("Freigeschaltet"); $("tEmail").value = ""; loadTeam();
+  };
+  loadTeam();
+}
+async function loadTeam(){
+  const { data } = await sb.from("staff").select("*").order("created_at");
+  IH.flip("#tList", () => {
+    $("tList").innerHTML = (data || []).map(s => `<div class="trow" data-k="${s.user_id}"><span class="em">${esc(s.email || s.user_id)}</span>${s.is_admin ? `<span class="pill">Admin</span>` : ""}
+      ${s.user_id === me.id ? `<span class="muted">Du</span>` : `<button class="btn danger" type="button" data-rm="${s.user_id}">Entfernen</button>`}</div>`).join("");
+  });
+  $("tList").querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Wirklich entfernen?"; IH.bump(b); return; }
+    const { error } = await sb.from("staff").delete().eq("user_id", b.dataset.rm);
+    if (error) return IH.toast(error.message, "err");
+    loadTeam();
+  });
+}
+
+/* ========== APPS ========== */
+function renderApps(){
+  const A = [
+    ["kunde", "Kunde", "Speisekarte in 5 Sprachen, bestellen, online oder bar bezahlen, Status live. Für Gäste per QR-Code.", "../kunde/"],
+    ["kasse", "Kasse", "Bestellungen kassieren (Bar, Karte, Lieferung), an die Küche geben, ausgeben. Telefon- und WhatsApp-Bestellungen erfassen.", "../kasse/"],
+    ["kueche", "Küche", "Großes Display: nur bezahlte Bestellungen, Start → Fertig, Eingangston. Für Tablet oder TV.", "../kueche/"],
+    ["abholung", "Abhol-Anzeige", "Für den TV im Gastraum: „Bitte abholen“ mit Bestell- und Tischnummer, Alarmton. Ohne Login.", "../abholung/"],
+    ["dashboard", "Dashboard", "Umsatz und Auswertung, Speisekarte und Preise, QR-Codes, Team.", "./"],
+  ];
+  $("v-apps").innerHTML = `<h2 class="view">Apps</h2>
+    <p class="muted" style="margin-top:0;max-width:70ch">Jede App einzeln auf dem passenden Gerät öffnen und installieren: iPhone → Teilen → „Zum Home-Bildschirm“, Android → Menü → „App installieren“.</p>
+    <div class="apps">${A.map(([k, n, d, u]) => { const url = new URL(u, location.href).href; return `<div class="appcard" data-rv>
+      <div class="h"><img src="../assets/icons/${k}-192.png" alt=""><b>${n}</b></div><p>${d}</p><code>${esc(url)}</code>
+      <div class="row"><a class="btn primary" href="${u}" ${k === "dashboard" ? "" : `target="_blank" rel="noopener"`}>Öffnen</a><button class="btn" type="button" data-copy="${esc(url)}">Link kopieren</button></div></div>`; }).join("")}</div>`;
+  IH.reveal($("v-apps"));
+  $("v-apps").querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); IH.toast("Link kopiert"); }
+    catch (e) { IH.toast(b.dataset.copy); }
+  });
+}
+
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>

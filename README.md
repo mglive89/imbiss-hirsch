@@ -1,88 +1,70 @@
-# Imbiss Hirsch – Web-App
+# Imbiss
 
-Zwei Apps, eine Datenbank (Supabase-Projekt `imbiss-hirsch`, Frankfurt):
+Bestell- und Kassensystem für **Imbiss Hirsch**, Bietigheim-Bissingen.
+Fünf Web-Apps (PWA) auf einer gemeinsamen Datenbank (Supabase). Jede App lässt sich einzeln auf dem Gerät installieren, auf dem sie gebraucht wird.
 
-| Datei | Für wen | Was |
-|---|---|---|
-| `index.html` | Gäste | Speisekarte in 5 Sprachen, Warenkorb, Bestellung am Tisch / Abholung / Lieferung, Status live |
-| `kueche.html` | Küche | Großes Display (Tablet/TV): nur **bezahlte** Bestellungen, älteste Zahlung zuerst, Start → Fertig, Ton, Vollbild |
-| `abholung.html` | Gastraum-TV | Abhol-Anzeige ohne Login: „In Zubereitung“ und groß „Bitte abholen“ mit Bestell- und Tischnummer, Alarmton |
-| `personal.html` | Team | Küchen-Board live mit Ton, Telefon-/WhatsApp-Bestellungen erfassen, Speisekarte & Preise, „Ausverkauft“, Tagesübersicht, QR-Codes, Team |
+| App | Ordner | Gerät | Login |
+|---|---|---|---|
+| **Kunde** | `kunde/` | Handy der Gäste (per QR-Code) | – |
+| **Kasse** | `kasse/` | Tablet / Handy an der Theke | Personal |
+| **Dashboard** | `dashboard/` | Laptop / Tablet des Chefs | Personal |
+| **Küche** | `kueche/` | Tablet oder TV in der Küche | Personal |
+| **Abholung** | `abholung/` | TV im Gastraum | – |
 
-Kein Build nötig, nur statische Dateien.
-
-## 1. Online stellen (VPS + nginx, HTTPS ist Pflicht)
-
-```bash
-scp -r imbiss-hirsch-app/* user@server:/var/www/imbiss-hirsch/
-```
-
-```nginx
-server {
-    server_name menu.example.de;
-    root /var/www/imbiss-hirsch;
-    index index.html;
-    location ~* \.(html|js|css|webmanifest)$ { add_header Cache-Control "no-cache"; }
-}
-```
-
-```bash
-sudo certbot --nginx -d menu.example.de
-```
-
-## 2. Supabase einmal einstellen
-
-Dashboard → Authentication → URL Configuration:
-- **Site URL**: `https://menu.example.de/personal.html`
-- **Redirect URLs**: `https://menu.example.de/*`
-
-Sonst führt der Bestätigungslink aus der Registrierungs-Mail ins Leere.
-
-## 3. Erster Login
-
-1. `https://menu.example.de/personal.html` öffnen → „Konto erstellen“.
-2. E-Mail bestätigen, dann anmelden. **Das erste Konto wird automatisch Admin.**
-3. Weitere Mitarbeiter: Sie erstellen ein Konto, du trägst ihre E-Mail unter „QR & Team“ ein.
-
-## 4. Tische
-
-„QR & Team“ → Anzahl Tische eintragen → Codes abfotografieren und drucken.
-Jeder Code öffnet `…/?tisch=N`; die Bestellung landet mit Tischnummer in der Küche.
-Der Code „Abholen & Liefern“ ist für Flyer und Tüten.
-
-## Wie es zusammenhängt
-
-- Gäste können Bestellungen nur über die Funktion `place_order` anlegen. Preise rechnet die Datenbank selbst, Gäste können sie nicht verändern.
-- Gäste sehen nur den Status der eigenen Bestellung (Nummer + geheimer Schlüssel).
-- Bestellungen, Speisekarte bearbeiten und Übersicht nur für freigeschaltete Mitarbeiter (Row Level Security).
-- Spam-Bremse: max. 3 Gäste-Bestellungen pro Tisch/Telefon in 3 Minuten.
-- Ohne Internet zeigt die Gäste-App die zuletzt geladene Karte (Bestellen ist dann gesperrt).
-
-## Nach Änderungen an den Dateien
-
-`VERSION` in `sw.js` hochzählen (z. B. `ih-app-v2`), damit installierte Apps die neue Version laden.
-Preise und Gerichte änderst du **nicht** in den Dateien, sondern in `personal.html` → „Speisekarte“.
+Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-App weiter).
 
 ## Ablauf einer Bestellung
 
-1. Gast bestellt per QR (oder ihr erfasst sie unter „Neue Bestellung“) → Spalte **Zu bezahlen** in der Kasse.
-2. Kasse tippt **Bar bezahlt** / **Karte** (Lieferung: **Bei Lieferung**) → Bestellung erscheint auf dem **Küchen-Display**.
-3. Küche: **Start** → **Fertig** → Nummer erscheint rechts unter „Fertig · zur Ausgabe“.
-4. Kasse: **Ausgegeben** / **Ausgeliefert** → abgeschlossen.
+1. **Kunde** bestellt per QR-Code (Tisch, Abholung oder Lieferung) und zahlt entweder online (Karte, PayPal, Apple/Google Pay) oder bar.
+2. **Kasse**: Bar- und Kartenzahlungen mit einem Tipp bestätigen. Online bezahlte Bestellungen springen automatisch weiter.
+3. **Küche** sieht nur bezahlte Bestellungen, mit Eingangston. *Start* → *Fertig*.
+4. „Fertig“ löst einen Alarm aus: beim Gast auf dem Handy, an der Kasse und groß auf der **Abhol-Anzeige** mit Tischnummer.
+5. **Kasse** gibt aus → abgeschlossen. Das **Dashboard** zählt live mit.
 
-Telefon-/Theken-Bestellungen, die schon bezahlt sind, gehen beim Anlegen direkt in die Küche (Zahlung „Bar“ oder „Karte“ wählen).
+## Aufbau
 
-## Online-Zahlung (Karte, PayPal, Apple Pay, Google Pay) über Stripe
+```
+Imbiss/
+├─ kunde/ kasse/ dashboard/ kueche/ abholung/   je index.html + manifest.webmanifest
+├─ shared/
+│  ├─ ih.css        Design-System + Animationen
+│  ├─ ih.js         Kern: Supabase, Töne, Zoom-Sperre, Animationen (FLIP, Konfetti, Zähler …)
+│  ├─ staff.js      gemeinsamer Login für die Personal-Apps
+│  ├─ config.js     Supabase-Adresse + öffentlicher Schlüssel
+│  └─ menu-fallback.js   Speisekarte für den Offline-Fall
+├─ assets/          Logo, Titelbild, App-Icons je App
+├─ supabase/
+│  ├─ schema.sql    komplette Datenbank (Tabellen, Rechte, Funktionen)
+│  └─ functions/    create-checkout + stripe-webhook (Online-Zahlung)
+├─ sw.js            Offline-Cache für alle Apps
+└─ index.html       Weiterleitung zur Kunden-App (alte QR-Codes funktionieren weiter)
+```
 
-Die Funktionen `create-checkout` und `stripe-webhook` laufen schon in Supabase (Code in `supabase/functions/`).
-Solange kein Stripe-Schlüssel hinterlegt ist, zeigt die Gäste-App nur „Bar an der Kasse“.
+Kein Build-Schritt: statische Dateien, direkt auf GitHub Pages oder jedem HTTPS-Webserver.
 
-1. Stripe-Konto anlegen (stripe.com) → Einstellungen → Zahlungsmethoden → **PayPal**, Apple Pay, Google Pay aktivieren.
-2. Supabase → Edge Functions → **Secrets** → `STRIPE_SECRET_KEY` = geheimer Schlüssel (`sk_test_…` zum Testen, später `sk_live_…`).
-3. Stripe → Entwickler → **Webhooks** → Endpunkt hinzufügen:
-   `https://trwvzjgkygoggnomfovi.supabase.co/functions/v1/stripe-webhook`
-   Ereignisse: `checkout.session.completed`, `checkout.session.async_payment_succeeded`
-   → Signatur-Geheimnis kopieren → Supabase-Secret `STRIPE_WEBHOOK_SECRET`.
-4. Eigene Domain statt GitHub Pages? Secret `APP_ORIGINS` = `https://menu.example.de` (mehrere mit Komma).
+## Einrichtung
 
-Online bezahlte Bestellungen gehen ohne Kasse direkt in die Küche. Stornos online bezahlter Bestellungen im Stripe-Dashboard erstatten.
+1. **Supabase → Authentication → URL Configuration**
+   Site URL: `https://mglive89.github.io/imbiss-hirsch/kasse/`
+   Redirect URLs: `https://mglive89.github.io/imbiss-hirsch/*`
+2. **Erstes Konto**: Kasse oder Dashboard öffnen → „Konto erstellen“ → E-Mail bestätigen → anmelden. Das erste Konto wird Admin.
+3. **Mitarbeiter**: erstellen selbst ein Konto; Admin schaltet sie im Dashboard → Team frei. Ein Login gilt für alle Personal-Apps.
+4. **Tische**: Dashboard → QR-Codes → Anzahl Tische → „Als Bild speichern“ → drucken (ca. 5 × 5 cm).
+5. **Online-Zahlung** (optional) über Stripe:
+   - Stripe-Konto → Zahlungsmethoden: PayPal, Apple Pay, Google Pay aktivieren
+   - Supabase → Edge Functions → Secrets: `STRIPE_SECRET_KEY`
+   - Stripe → Webhooks → `https://trwvzjgkygoggnomfovi.supabase.co/functions/v1/stripe-webhook`, Ereignisse `checkout.session.completed`, `checkout.session.async_payment_succeeded` → Secret `STRIPE_WEBHOOK_SECRET`
+   - Andere Domain als GitHub Pages: Secret `APP_ORIGINS` setzen.
+
+## Sicherheit
+
+- Gäste legen Bestellungen nur über `place_order` an; Preise rechnet die Datenbank.
+- Gäste sehen nur den Status der eigenen Bestellung (Nummer + geheimer Schlüssel).
+- Abhol-Anzeige zeigt nur Nummern und Tische.
+- Alles andere nur für freigeschaltetes Personal (Row Level Security).
+- Spam-Bremse: max. 3 Gäste-Bestellungen pro Tisch/Telefon in 3 Minuten.
+
+## Updates
+
+Nach Änderungen an Dateien `VERSION` in `sw.js` hochzählen, damit installierte Apps neu laden.
+Preise und Gerichte werden **nicht** im Code geändert, sondern im Dashboard → Speisekarte.

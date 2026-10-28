@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="de" class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Küche</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/kueche-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/kueche-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Küche">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Kitchen display, read from 2–3 m: paid orders only, oldest payment first. Right rail = done, waiting for hand-out. */
+:root{--app:var(--warn)}
+body{font-size:18px}
+.appbar .brand img{height:44px}
+.clock{font-family:var(--label);font-weight:700;font-size:30px;font-variant-numeric:tabular-nums}
+.count{font-family:var(--label);font-weight:600;font-size:17px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.count b{color:var(--fg);font-size:24px;display:inline-block}
+.kmain{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:18px;padding-block:16px;min-height:0}
+@media (max-width:820px){.kmain{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}.rail{max-height:32vh}}
+.queue{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 2px calc(16px + env(safe-area-inset-bottom,0px));
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-content:start}
+.card{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--info);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;will-change:transform}
+.card.zubereitung{border-top-color:var(--warn)}
+.card.late{border-top-color:var(--bad)}
+.card.fresh{animation:newCard 1s ease-in-out 5}
+@keyframes newCard{50%{background:#1d2836;box-shadow:0 0 0 4px rgba(127,168,217,.35)}}
+.card.zubereitung .c-head::after{content:"";position:absolute}
+.c-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;position:relative}
+.c-no{font-family:var(--display);font-size:38px;line-height:1}
+.c-where{font-family:var(--label);font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.03em}
+.c-min{margin-left:auto;font-family:var(--label);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
+.card.late .c-min{color:var(--bad);animation:latePulse 1.4s ease-in-out infinite}
+@keyframes latePulse{50%{opacity:.45}}
+.c-progress{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.c-progress i{display:block;height:100%;background:var(--warn);width:var(--w,0%);transition:width 1s var(--ease)}
+.card.late .c-progress i{background:var(--bad)}
+.c-sub{font-size:15px;color:var(--muted)}
+.c-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.c-items li{display:flex;gap:10px;font-size:22px;line-height:1.2}
+.c-items .q{font-family:var(--label);font-weight:700;font-size:26px;min-width:40px;color:var(--kraft)}
+.c-items em{display:block;font-style:normal;font-size:17px;color:#f1d9a6}
+.c-note{background:#3a2b14;color:#ffe3a8;border-radius:10px;padding:8px 10px;font-size:19px;font-weight:500}
+.c-foot{display:flex;gap:10px;margin-top:auto}
+.c-foot .btn{flex:1;padding:15px;font-size:21px}
+.c-foot .btn.undo{flex:0 0 auto}
+.rail{max-height:100%;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;align-self:start}
+.rail h2{font-family:var(--label);font-weight:700;font-size:20px;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--ok)}
+.rail p{margin:0;color:var(--faint);font-size:14px}
+.ready{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:10px;padding:8px 10px;border-left:4px solid var(--ok)}
+.ready b{font-family:var(--display);font-size:24px}
+.ready span{flex:1;font-family:var(--label);font-weight:600;font-size:17px;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ready button{background:transparent;border:1px solid var(--line);border-radius:8px;color:var(--muted);padding:4px 8px;cursor:pointer;font-family:var(--label);font-weight:600}
+.queue .empty{grid-column:1/-1;padding:70px 10px;font-family:var(--label);font-size:26px;text-transform:uppercase;letter-spacing:.06em;border:0}
+.queue .empty svg{display:block;width:80px;height:80px;margin:0 auto 14px;fill:none;stroke:var(--faint);stroke-width:1.5;animation:idle 4s ease-in-out infinite}
+@keyframes idle{50%{transform:translateY(-6px) rotate(-3deg)}}
+.flyout{position:fixed;z-index:70;pointer-events:none}
+@media (max-width:640px){.count,.appbar .btn.ghost,#fsBtn{display:none}.clock{font-size:22px}.appbar .brand img{height:36px}}
+</style>
+</head>
+<body>
+
+<div id="app" hidden>
+  <header class="appbar">
+    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Küche</b></a>
+    <span class="conn" id="conn" title="Live-Verbindung"></span>
+    <span class="count">In Arbeit <b id="cntQ">0</b></span>
+    <span class="count">Fertig <b id="cntR">0</b></span>
+    <span class="sp"></span>
+    <a class="btn ghost" href="../abholung/" target="_blank" rel="noopener">Abhol-Anzeige</a>
+    <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Ton an/aus" title="Ton an/aus"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+    <button class="iconbtn" id="fsBtn" type="button" aria-label="Vollbild" title="Vollbild"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <span class="clock" id="clock">--:--</span>
+  </header>
+  <div class="kmain">
+    <section class="queue" id="queue" aria-live="polite"></section>
+    <aside class="rail">
+      <h2>Fertig · zur Ausgabe</h2>
+      <p>Die Kasse gibt aus und schließt ab.</p>
+      <div id="ready" style="display:flex;flex-direction:column;gap:8px"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="starter" id="starter" hidden>
+  <div>
+    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <p class="appname">Küche</p>
+    <p>Antippen: Ton für neue Bestellungen an, Vollbild, Bildschirm bleibt an.</p>
+    <button class="btn big primary" type="button" id="startBtn">Küche starten</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script src="../shared/staff.js"></script>
+<script>
+const { $, esc, minsAgo } = IH;
+let sb, orders = [], seen = new Set(), first = true;
+const TARGET = 15; // minutes until an order counts as late
+
+const where = o => o.channel === "tisch" ? `Tisch ${esc(o.table_no)}` : o.channel === "abholung" ? `Abholung${o.customer_name ? " · " + esc(o.customer_name) : ""}` : "Lieferung";
+
+IH.splash("../assets/logo.jpg", "Küche");
+IH.staffGate({ app: "Küche", onReady: async (ctx) => {
+  sb = ctx.sb;
+  if (!IH.sound.on) $("starter").hidden = false;
+  IH.clock($("clock"));
+  await load(); subscribe(); IH.keepAwake();
+}});
+
+/* ---------- data: only paid orders ---------- */
+async function load(){
+  const { data, error } = await sb.from("orders").select("*, order_items(*)")
+    .neq("payment", "offen").in("status", ["neu","zubereitung","fertig"])
+    .order("paid_at", { ascending: true }).limit(200);
+  $("conn").classList.toggle("off", !!error);
+  if (error) return;
+  const fresh = [];
+  for (const o of data){ if (!seen.has(o.id)){ seen.add(o.id); if (!first && o.status !== "fertig") fresh.push(o.id); } }
+  first = false; orders = data;
+  render(fresh);
+  if (fresh.length){ IH.sound.received(); IH.blinkTitle("Neue Bestellung"); IH.toast(fresh.length === 1 ? `Neue Bestellung #${fresh[0]}` : `${fresh.length} neue Bestellungen`); }
+}
+let reloadT;
+function subscribe(){
+  sb.channel("kitchen")
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
+    .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
+  setInterval(load, 20000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+}
+
+/* ---------- render ---------- */
+let lastQ = -1, lastR = -1;
+function render(fresh = []){
+  const queue = orders.filter(o => o.status !== "fertig");
+  const ready = orders.filter(o => o.status === "fertig").sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  $("cntQ").textContent = queue.length; $("cntR").textContent = ready.length;
+  if (lastQ >= 0 && lastQ !== queue.length) IH.bump($("cntQ"));
+  if (lastR >= 0 && lastR !== ready.length) IH.bump($("cntR"));
+  lastQ = queue.length; lastR = ready.length;
+  IH.flip($("queue"), () => {
+    $("queue").innerHTML = queue.length ? queue.map(o => {
+      const m = minsAgo(o.paid_at || o.created_at), late = m >= TARGET;
+      const items = (o.order_items || []).map(i => `<li><span class="q">${i.qty}×</span><span>${esc(i.name_de)}${i.note ? `<em>${esc(i.note)}</em>` : ""}</span></li>`).join("");
+      const sub = [o.channel === "lieferung" ? esc(o.address || "") : "", o.payment === "bei_lieferung" ? "Zahlung bei Lieferung" : o.payment === "online" ? "Online bezahlt" : ""].filter(Boolean).join(" · ");
+      return `<article class="card ${o.status}${late ? " late" : ""}${fresh.includes(o.id) ? " fresh" : ""}" data-k="o${o.id}">
+        <div class="c-head"><span class="c-no">#${o.id}</span><span class="c-where">${where(o)}</span><span class="c-min">${m} min</span></div>
+        <div class="c-progress"><i style="--w:${Math.min(100, m / TARGET * 100)}%"></i></div>
+        ${sub ? `<div class="c-sub">${sub}</div>` : ""}
+        <ul class="c-items">${items}</ul>
+        ${o.note ? `<div class="c-note">${esc(o.note)}</div>` : ""}
+        <div class="c-foot">${o.status === "neu"
+          ? `<button class="btn primary" type="button" data-to="zubereitung" data-id="${o.id}">Start</button>`
+          : `<button class="btn undo" type="button" data-to="neu" data-id="${o.id}" aria-label="Zurück auf Neu">↩</button><button class="btn ok" type="button" data-to="fertig" data-id="${o.id}">Fertig</button>`}</div>
+      </article>`;
+    }).join("") : `<div class="empty"><svg viewBox="0 0 64 64"><path d="M14 30a18 18 0 0 1 36 0v14H14z"/><path d="M8 50h48M32 8v6"/></svg>Keine offenen Bestellungen</div>`;
+  });
+  IH.flip($("ready"), () => {
+    $("ready").innerHTML = ready.length ? ready.map(o => `<div class="ready" data-k="r${o.id}"><b>#${o.id}</b><span>${where(o)}</span><button type="button" data-to="zubereitung" data-id="${o.id}">Zurück</button></div>`).join("")
+      : `<p>Noch nichts fertig.</p>`;
+  });
+  document.querySelectorAll("[data-to]").forEach(b => b.onclick = () => setStatus(+b.dataset.id, b.dataset.to, b));
+}
+async function setStatus(id, status, btn){
+  const o = orders.find(x => x.id === id);
+  if (status === "fertig" && btn && !IH.reduced){
+    // the finished card flies over to the "Fertig" rail
+    const card = btn.closest(".card"), r = card.getBoundingClientRect(), t = $("ready").getBoundingClientRect();
+    const ghost = card.cloneNode(true); ghost.className += " flyout";
+    ghost.style.cssText += `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0`;
+    document.body.appendChild(ghost);
+    ghost.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${t.left - r.left}px,${t.top - r.top}px) scale(.35)`, opacity: 0 }], { duration: 550, easing: "cubic-bezier(.5,0,.75,0)" }).finished.then(() => ghost.remove(), () => ghost.remove());
+    IH.sound.paid();
+  }
+  if (o){ o.status = status; o.updated_at = new Date().toISOString(); }
+  render();
+  const { error } = await sb.from("orders").update({ status }).eq("id", id);
+  if (error){ IH.toast("Konnte nicht gespeichert werden", "err"); load(); }
+}
+setInterval(() => { if (!$("app").hidden) render(); }, 30000);
+
+/* ---------- controls ---------- */
+const paintSound = () => $("soundBtn").setAttribute("aria-pressed", IH.sound.on);
+$("soundBtn").onclick = () => { if (IH.sound.on) IH.sound.off(); else { IH.sound.unlock(); IH.sound.tap(); } paintSound(); };
+$("fsBtn").onclick = IH.fullscreen;
+$("startBtn").onclick = () => {
+  IH.sound.unlock(); IH.sound.received(); paintSound();
+  try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
+  $("starter").classList.add("out"); setTimeout(() => $("starter").hidden = true, 350);
+  IH.keepAwake();
+};
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>
