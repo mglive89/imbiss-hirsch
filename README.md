@@ -92,4 +92,12 @@ Eine Installation, beliebig viele Betriebe. Jeder Betrieb hat dieselben Apps mit
 - Flyer-Import: Edge Function `menu-from-flyer`, braucht das Secret `ANTHROPIC_API_KEY` (Supabase → Edge Functions → Secrets).
 - **Pflicht vor dem zweiten echten Kunden:** `supabase/migrations/multi_tenant_part2.sql` einmal im SQL Editor ausführen (trennt die Daten der Betriebe auch auf Datenbank-Ebene).
 
+## Verträge
+
+Plattform → Kunde → 3 Contratto → „Prepara e firma“: Vertrag (Deutsch) mit den Vertragsdaten des Kunden, Unterschrift von Kunde und Anbieter direkt auf dem Bildschirm → PDF.
+- PDF herunterladen bzw. teilen; gespeichert im privaten Bucket `contracts`, Prüfsumme (SHA-256) in der Tabelle `contracts`.
+- Der Inhaber des Kunden sieht und lädt den Vertrag im Dashboard → Support (nur Admins des Betriebs).
+- Anbieterdaten, eigene Unterschrift und Support-Kontakt: Plattform → „Profilo e assistenza“.
+- Der Vertragstext ist eine Vorlage – vor dem ersten Einsatz anwaltlich prüfen lassen (inkl. separater AV-Vereinbarung nach Art. 28 DSGVO).
+
 Der Name GallopaySystem erscheint nur in der Plattform-App des Betreibers und als Eigentumsvermerk im Code, nicht in den Apps der Kunden.

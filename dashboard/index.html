@@ -158,6 +158,15 @@
 .appcard p{margin:0;color:var(--muted);font-size:14px;flex:1}
 .appcard code{font-size:12px;color:var(--faint);word-break:break-all}
 .appcard .row{display:flex;gap:8px;flex-wrap:wrap}
+.sup .row{display:flex;gap:8px;flex-wrap:wrap}
+.supname{font-family:var(--label);font-weight:700;font-size:22px;text-transform:uppercase;margin:4px 0 12px}
+.vrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.vrow:first-of-type{border-top:0}
+.vrow b{font-family:var(--label);font-size:17px;display:block}
+.vrow span{display:block;color:var(--muted);font-size:13px}
+.faq details{border-top:1px solid var(--line);padding:10px 0}
+.faq summary{cursor:pointer;font-weight:500}
+.faq p{color:var(--muted);margin:8px 0 0}
 </style>
 </head>
 <body class="has-bnav">
@@ -181,6 +190,7 @@
       <a href="#team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Team</a>
       <span class="grp">System</span>
       <a href="#apps"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>Apps</a>
+      <a href="#support"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.5v.01"/></svg>Support</a>
     </nav>
     <main class="content"><div class="inner">
       <section id="v-uebersicht"></section>
@@ -189,6 +199,7 @@
       <section id="v-qr" hidden></section>
       <section id="v-team" hidden></section>
       <section id="v-apps" hidden></section>
+      <section id="v-support" hidden></section>
     </div></main>
   </div>
   <nav class="bnav" aria-label="Bereiche">
@@ -198,6 +209,7 @@
     <a href="#qr"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7"/></svg>QR</a>
     <a href="#team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Team</a>
     <a href="#apps"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>Apps</a>
+    <a href="#support"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.5v.01"/></svg>Hilfe</a>
   </nav>
 </div>
 
@@ -280,7 +292,7 @@ function subscribe(){
 }
 
 /* ---------- routing ---------- */
-const VIEWS = ["uebersicht","bewertungen","karte","qr","team","apps"];
+const VIEWS = ["uebersicht","bewertungen","karte","qr","team","apps","support"];
 function route(){
   const h = location.hash.replace("#", "");
   const next = VIEWS.includes(h) ? h : "uebersicht";
@@ -289,7 +301,7 @@ function route(){
   document.querySelectorAll(".side a, .bnav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + current ? "page" : "false"));
   const v = $("v-" + current);
   if (changed){ v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); document.querySelector(".content").scrollTop = 0; }
-  ({ uebersicht: () => renderStats(true), bewertungen: () => renderReviews(true), karte: renderMenuEditor, qr: renderQR, team: renderTeam, apps: renderApps })[current]();
+  ({ uebersicht: () => renderStats(true), bewertungen: () => renderReviews(true), karte: renderMenuEditor, qr: renderQR, team: renderTeam, apps: renderApps, support: renderSupport })[current]();
 }
 addEventListener("hashchange", () => { if (staff) route(); });
 
@@ -643,6 +655,44 @@ function renderApps(){
   $("v-apps").querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => {
     try { await navigator.clipboard.writeText(b.dataset.copy); IH.toast("Link kopiert"); }
     catch (e) { IH.toast(b.dataset.copy); }
+  });
+}
+
+/* ========== SUPPORT & VERTRAG ========== */
+async function renderSupport(){
+  const V = $("v-support");
+  V.innerHTML = `<h2 class="view">Support</h2><div class="grid2"><div class="box skeleton" style="height:180px"></div><div class="box skeleton" style="height:180px"></div></div>`;
+  const [s, k] = await Promise.all([sb.rpc("get_support"), sb.from("contracts").select("id,terms,signer_name,signed_at,pdf_path").eq("client_id", CID).order("signed_at", { ascending: false })]);
+  const sup = s.data || {}, list = k.data || [];
+  const tel = String(sup.phone || "").replace(/[^0-9+]/g, ""), wa = tel.replace(/^0/, "49").replace(/^\+/, "");
+  const subj = encodeURIComponent(`Support – ${B().name}`);
+  V.innerHTML = `<h2 class="view">Support</h2>
+    <div class="grid2">
+      <div class="box sup" data-rv><h3>Hilfe &amp; Kontakt</h3>
+        ${sup.name || sup.email || sup.phone ? `<p class="muted" style="margin-top:0">Fragen, Störung oder Änderungswunsch? Wir helfen dir schnell.</p>
+        <div class="supname">${esc(sup.name || "")}</div>
+        <div class="row">${sup.phone ? `<a class="btn primary" href="tel:${esc(tel)}">Anrufen · ${esc(sup.phone)}</a><a class="btn" href="https://wa.me/${esc(wa)}?text=${subj}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
+        ${sup.email ? `<a class="btn" href="mailto:${esc(sup.email)}?subject=${subj}">E-Mail</a>` : ""}</div>` : `<div class="empty">Kontaktdaten folgen.</div>`}
+        <p class="muted" style="font-size:13px;margin:14px 0 0">Bitte gib bei Störungen die Bestellnummer und die betroffene App an (Kasse, Küche …).</p></div>
+      <div class="box" data-rv><h3>Dein Vertrag<small>${list.length ? "unterschrieben" : ""}</small></h3>
+        ${k.error ? `<div class="empty">Nur Admins sehen den Vertrag.</div>` : list.length ? list.map(c => `<div class="vrow"><div><b>Vertrag Nr. ${esc(c.terms.nr)}</b><span>Unterschrieben von ${esc(c.signer_name)} am ${new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(c.signed_at))}</span>
+          <span>${eur(c.terms.monthly_fee)} / Monat${+c.terms.pct_online ? ` · ${String(c.terms.pct_online).replace(".", ",")} % online` : ""}${c.terms.trial_until ? ` · Testphase bis ${new Intl.DateTimeFormat("de-DE").format(new Date(c.terms.trial_until + "T12:00"))}` : ""}</span></div>
+          <button class="btn primary" type="button" data-pdf="${esc(c.id)}">PDF herunterladen</button></div>`).join("")
+          : `<div class="empty">Noch kein Vertrag hinterlegt.</div>`}</div>
+    </div>
+    <div class="box" data-rv><h3>Schnelle Hilfe</h3><div class="faq">
+      <details><summary>Preis ändern oder Gericht ausverkauft</summary><p>Dashboard → Speisekarte: Preis direkt eintippen oder den Schalter „Aktiv“ ausschalten. Gäste sehen es sofort.</p></details>
+      <details><summary>Neuer Mitarbeiter</summary><p>Er öffnet Kasse oder Küche und tippt „Konto erstellen“. Danach trägst du seine E-Mail unter Team ein.</p></details>
+      <details><summary>QR-Codes für die Tische drucken</summary><p>Dashboard → QR-Codes → Anzahl Tische → „Als Bild speichern“, ca. 5 × 5 cm drucken.</p></details>
+      <details><summary>Lieferservice pausieren</summary><p>Dashboard → Übersicht → Schalter „Lieferservice“. Gäste sehen dann nur Abholen und Tisch.</p></details>
+      <details><summary>Kein Ton in der Küche</summary><p>Einmal auf den Bildschirm tippen („Ton an“) und die Lautstärke des Geräts prüfen. Das Display nicht in den Ruhemodus schicken.</p></details>
+    </div></div>`;
+  IH.reveal(V);
+  V.querySelectorAll("[data-pdf]").forEach(b => b.onclick = async () => {
+    const c = list.find(x => x.id === b.dataset.pdf);
+    const { data, error } = await sb.storage.from("contracts").createSignedUrl(c.pdf_path, 300, { download: `Vertrag-${c.terms.nr}.pdf` });
+    if (error) return IH.toast("PDF nicht verfügbar", "err");
+    location.href = data.signedUrl;
   });
 }
 

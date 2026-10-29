@@ -1,7 +1,7 @@
 /* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 /* Imbiss – service worker for all apps (scope = project root).
    Bump VERSION after changing files so installed apps update. */
-const VERSION = "imbiss-v9";
+const VERSION = "imbiss-v10";
 const CORE = [
   "kunde/", "kunde/index.html", "kunde/manifest.webmanifest",
   "kasse/", "kasse/index.html", "kasse/manifest.webmanifest",
@@ -10,7 +10,7 @@ const CORE = [
   "abholung/", "abholung/index.html", "abholung/manifest.webmanifest",
   "fahrer/", "fahrer/index.html", "fahrer/manifest.webmanifest",
   "plattform/", "plattform/index.html", "plattform/manifest.webmanifest",
-  "shared/ih.css", "shared/ih.js", "shared/staff.js", "shared/config.js", "shared/menu-fallback.js",
+  "shared/ih.css", "shared/ih.js", "shared/staff.js", "shared/config.js", "shared/menu-fallback.js", "shared/contract.js",
   "assets/logo.jpg", "assets/cover.jpg",
   ...["kunde", "kasse", "dashboard", "kueche", "abholung", "fahrer", "plattform"].flatMap(a => [`assets/icons/${a}-192.png`, `assets/icons/${a}-64.png`, `assets/icons/${a}-apple.png`]),
 ];

@@ -57,6 +57,15 @@
 .mprev h4{font-family:var(--label);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px;color:var(--gold)}
 .mprev div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14px;border-bottom:1px dotted var(--line)}
 .mprev div span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.kbox{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px}
+.kh{display:flex;align-items:center;gap:10px}.kh .sp{flex:1}
+.krow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);color:var(--fg);font-size:14px;flex-wrap:wrap}
+.cprev{background:#fbf8f2;color:#222;border-radius:12px;padding:18px 20px;max-height:300px;overflow:auto;font-size:13px;line-height:1.5}
+.cprev .ctitle{font-weight:700;font-size:20px}.cprev .csub{color:#666;margin-bottom:8px;border-bottom:2px solid #F2B33D;padding-bottom:8px}
+.cprev h4{margin:12px 0 4px;font-size:14px}.cprev p{margin:0 0 6px}
+.sigpad{width:100%;height:150px;background:#fff;border-radius:12px;border:2px dashed #c9c2b6;cursor:crosshair;display:block}
+.sigs .field{gap:6px}.sigs .btn.ghost{align-self:flex-start}
+.donek{width:72px;height:72px;border-radius:50%;background:var(--ok);color:#111;display:grid;place-items:center;font-size:40px;font-weight:700;animation:popIn .5s var(--spring)}
 .ok2{background:rgba(127,191,95,.08);border:1px solid #3e5f2f;border-radius:10px;padding:10px 12px;font-size:14px}
 .cname{display:flex;align-items:center;gap:10px}
 .cname .lg{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#141110;border:1px solid var(--line);flex:none}
@@ -142,6 +151,7 @@
 <script src="../shared/config.js"></script>
 <script src="../shared/ih.js"></script>
 <script src="../shared/staff.js"></script>
+<script src="../shared/contract.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const { $, esc } = IH;
@@ -220,6 +230,7 @@ function render(animate){
   $("view").innerHTML = `
   <div class="top"><h2 class="view" style="margin:0">La mia piattaforma</h2><span class="sp"></span>
     <div class="monthnav"><button class="iconbtn" id="mPrev" type="button" aria-label="Mese precedente"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><b>${ymLabel(ym)}</b><button class="iconbtn" id="mNext" type="button" aria-label="Mese successivo" ${ym >= nowYM ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    <button class="btn" id="prof" type="button">Profilo e assistenza</button>
     <button class="btn" id="csv" type="button">Esporta CSV</button>
     <button class="btn primary" id="newC" type="button">+ Nuovo cliente</button></div>
   <div class="hero">
@@ -249,6 +260,7 @@ function render(animate){
   $("view").querySelectorAll("[data-pay]").forEach(b => b.onclick = () => markPaid(clients.find(c => c.id === b.dataset.pay), ym));
   $("newC").onclick = () => editClient(null);
   $("csv").onclick = exportCsv;
+  $("prof").onclick = editProfile;
 }
 
 /* ---------- actions ---------- */
@@ -337,10 +349,12 @@ function paintEditor(){
         <div class="field"><label for="cTrial">Prova gratuita fino al</label><input id="cTrial" type="date" value="${c.trial_until || ""}"></div></div>
       <label class="check"><input type="checkbox" id="cSetupPaid" ${c.setup_paid ? "checked" : ""}> Setup già pagato</label>
       <div class="field"><label for="cNotes">Note</label><textarea id="cNotes" rows="2">${esc(c.notes || "")}</textarea></div>
+      ${ed.isNew ? "" : `<div class="kbox"><div class="kh"><span class="lbl">Contratto firmato</span><span class="sp"></span><button class="btn primary" type="button" id="kSign">✍ Prepara e firma</button></div><div id="kList" class="muted">…</div></div>`}
       ${hist ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Mese</th><th>Ordini</th><th>Fatturato</th><th>Online</th><th>Guadagno</th><th>Incassato</th></tr></thead><tbody>${hist}</tbody></table></div>` : ""}
       <p class="err" id="cErr" hidden></p></div>
       <div class="actions"><span class="sp"></span><button class="btn" type="button" id="cCancel">Annulla</button><button class="btn primary" type="button" id="cSave">${ed.isNew ? "Crea cliente →" : "Salva"}</button></div>`;
     $("cCancel").onclick = closeDialog; $("cSave").onclick = saveClient;
+    if ($("kSign")){ $("kSign").onclick = () => { captureEditor(); paintSign(); }; loadContracts(); }
   }
   else if (ed.tab === "menu") paintMenuTab();
   else paintAppTab();
@@ -431,6 +445,133 @@ async function saveClient(){
   if (wasNew){ IH.burst(innerWidth / 2, 120); IH.toast(`${c.name} creato · ora il menù`); ed.tab = "menu"; }
   else IH.toast("Salvato");
   paintEditor();
+}
+
+/* ---------- contract: sign on screen -> PDF -> client's Dashboard (Support) ---------- */
+let profile = null;
+async function loadProfile(){
+  if (profile) return profile;
+  const { data } = await sb.from("platform_profile").select("*").eq("id", 1).maybeSingle();
+  return (profile = data || { id: 1 });
+}
+const cFile = (k) => `Vertrag-${k.terms.nr}-${IH.slug(k.terms.client?.name || k.client_id)}.pdf`;
+async function loadContracts(){
+  const { data, error } = await sb.from("contracts").select("*").eq("client_id", ed.c.id).order("signed_at", { ascending: false });
+  if (!$("kList")) return;
+  if (error) return $("kList").textContent = "Contratti non disponibili: " + error.message;
+  $("kList").innerHTML = data.length ? data.map(k => `<div class="krow"><span><b>Nr. ${esc(k.terms.nr)}</b> · firmato da ${esc(k.signer_name)} il ${IH.contract.dDE(k.signed_at.slice(0, 10))}</span><button class="btn" type="button" data-kdl="${esc(k.id)}">Scarica PDF</button></div>`).join("")
+    : "Nessun contratto firmato. Il cliente lo troverà poi nella sua Dashboard → Support.";
+  $("kList").querySelectorAll("[data-kdl]").forEach(b => b.onclick = () => downloadContract(data.find(k => k.id === b.dataset.kdl)));
+}
+async function downloadContract(k){
+  const { data, error } = await sb.storage.from("contracts").createSignedUrl(k.pdf_path, 300, { download: cFile(k) });
+  if (error) return IH.toast(error.message, "err");
+  location.href = data.signedUrl;
+}
+async function paintSign(){
+  const c = ed.c, P = await loadProfile(), B = $("eBody");
+  const nr = `${new Date().getFullYear()}-${c.id.slice(0, 6).toUpperCase()}-${String(Date.now()).slice(-4)}`;
+  const terms = () => ({ nr, date: IH.berlinToday(), start: c.started_at, trial_until: c.trial_until,
+    monthly_fee: +c.monthly_fee, setup_fee: +c.setup_fee, pct_online: +c.pct_online, fee_per_order: +c.fee_per_order,
+    min_months: +($("sMin")?.value || 0), notice_months: +($("sNotice")?.value || 1), notes: ($("sNotes")?.value || "").trim(),
+    place: ($("sPlace")?.value || "").trim(), signer_name: ($("sName")?.value || "").trim(),
+    provider: { name: $("pName")?.value.trim() || P.name || "", address: $("pAddr")?.value.trim() || P.address || "", email: $("pMail")?.value.trim() || P.email || "", phone: $("pPhone")?.value.trim() || P.phone || "", tax_id: $("pTax")?.value.trim() || P.tax_id || "" },
+    client: { name: c.name, address: c.address || c.city || "", contact: ($("sName")?.value || c.contact || "").trim(), logo_url: c.logo_url || null } });
+  const needP = !P.name || !P.address;
+  B.innerHTML = `<div class="grid">
+    <button class="btn ghost" type="button" id="sBack" style="justify-self:start">← Contratto</button>
+    ${needP ? `<div class="hint2"><b>I tuoi dati come fornitore</b> (compaiono nel contratto; li salvo per i prossimi)</div>
+      <div class="g2"><div class="field"><label for="pName">Nome / ragione sociale</label><input id="pName" value="${esc(P.name || "")}" placeholder="Marco Gallo"></div>
+      <div class="field"><label for="pAddr">Indirizzo</label><input id="pAddr" value="${esc(P.address || "")}" placeholder="Straße 1, 70000 Stadt"></div></div>
+      <div class="g3"><div class="field"><label for="pMail">E-mail</label><input id="pMail" type="email" value="${esc(P.email || "")}"></div>
+      <div class="field"><label for="pPhone">Telefono</label><input id="pPhone" value="${esc(P.phone || "")}"></div>
+      <div class="field"><label for="pTax">Steuer-Nr. / USt-IdNr.</label><input id="pTax" value="${esc(P.tax_id || "")}"></div></div>` : ""}
+    <div class="g3"><div class="field"><label for="sMin">Durata minima (mesi)</label><input id="sMin" type="number" min="0" max="36" value="12"></div>
+      <div class="field"><label for="sNotice">Preavviso disdetta (mesi)</label><input id="sNotice" type="number" min="1" max="6" value="1"></div>
+      <div class="field"><label for="sPlace">Luogo della firma</label><input id="sPlace" value="${esc(c.city || "")}"></div></div>
+    <div class="field"><label for="sNotes">Accordi particolari (facoltativo, in tedesco)</label><textarea id="sNotes" rows="2" placeholder="z. B. Einrichtungsgebühr in zwei Raten">${esc(c.notes && /[äöüß]|\b(der|die|das|und)\b/i.test(c.notes) ? c.notes : "")}</textarea></div>
+    <div class="cprev" id="sPrev"></div>
+    <div class="field" style="max-width:360px"><label for="sName">Nome di chi firma per il cliente</label><input id="sName" value="${esc((c.contact || "").split(",")[0])}" placeholder="Vorname Nachname"></div>
+    <div class="g2 sigs">
+      <div class="field"><span class="lbl">Firma del cliente</span><canvas class="sigpad" id="sigC"></canvas><button class="btn ghost" type="button" id="sigCx">Cancella</button></div>
+      <div class="field"><span class="lbl">La tua firma (fornitore)</span><canvas class="sigpad" id="sigP"></canvas>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost" type="button" id="sigPx">Cancella</button><label class="check"><input type="checkbox" id="sigKeep" checked> Ricorda la mia firma</label></div></div>
+    </div>
+    <label class="check"><input type="checkbox" id="sOk"> Il cliente ha letto il contratto e lo accetta</label>
+    <p class="err" id="sErr" hidden></p></div>
+    <div class="actions"><span class="sp"></span><button class="btn primary" type="button" id="sGo">Firma e crea PDF</button></div>`;
+  const prev = () => { $("sPrev").innerHTML = IH.contract.html(terms()); };
+  prev(); B.querySelectorAll("input,textarea").forEach(i => i.addEventListener("input", prev));
+  const padC = IH.contract.pad($("sigC")), padP = IH.contract.pad($("sigP"));
+  if (P.signature) setTimeout(() => padP.load(P.signature), 120);
+  $("sigCx").onclick = () => padC.clear(); $("sigPx").onclick = () => padP.clear();
+  $("sBack").onclick = () => paintEditor();
+  $("sGo").onclick = async () => {
+    const fail = m => { $("sErr").textContent = m; $("sErr").hidden = false; };
+    const t = terms();
+    if (!t.provider.name || !t.provider.address) return fail("Inserisci nome e indirizzo del fornitore.");
+    if (!t.signer_name) return fail("Inserisci il nome di chi firma per il cliente.");
+    if (padC.empty) return fail("Manca la firma del cliente.");
+    if (padP.empty) return fail("Manca la tua firma.");
+    if (!$("sOk").checked) return fail("Conferma che il cliente ha letto e accettato il contratto.");
+    const btn = $("sGo"); btn.disabled = true; btn.textContent = "Creo il PDF …";
+    try {
+      // provider data + own signature remembered for the next contracts
+      const pp = { id: 1, ...t.provider, updated_at: new Date().toISOString() };
+      if ($("sigKeep").checked) pp.signature = padP.jpeg();
+      await sb.from("platform_profile").upsert(pp); profile = { ...P, ...pp };
+      // contract fields as signed
+      await sb.from("clients").update({ monthly_fee: t.monthly_fee, setup_fee: t.setup_fee, pct_online: t.pct_online, fee_per_order: t.fee_per_order, started_at: t.start, trial_until: t.trial_until }).eq("id", c.id);
+      const id = crypto.randomUUID();
+      t.id = id; t.signed_at = new Date().toISOString();
+      const blob = await IH.contract.pdf(t, { client: padC.jpeg(), provider: padP.jpeg() });
+      const path = `${c.id}/${id}.pdf`;
+      const up = await sb.storage.from("contracts").upload(path, blob, { contentType: "application/pdf" });
+      if (up.error) throw up.error;
+      const row = { id, client_id: c.id, terms: { ...t, client: { ...t.client } }, signer_name: t.signer_name, place: t.place || null, signed_at: t.signed_at, pdf_path: path, sha256: await IH.contract.sha256(blob) };
+      const ins = await sb.from("contracts").insert(row);
+      if (ins.error) throw ins.error;
+      IH.sound.paid(); IH.burst(innerWidth / 2, 140);
+      signedView(row, blob);
+    } catch (e) { btn.disabled = false; btn.textContent = "Riprova"; fail("Non riuscito: " + (e.message || e)); }
+  };
+}
+async function editProfile(){
+  const P = await loadProfile();
+  openDialog(`<h3>Profilo e assistenza<button class="x" type="button" id="dX" aria-label="Chiudi">×</button></h3>
+    <div class="grid"><p class="muted" style="margin:0">Questi dati compaiono nei contratti. Nome, e-mail e telefono li vedono anche i clienti nella loro Dashboard → Support.</p>
+      <div class="g2"><div class="field"><label for="pName">Nome / ragione sociale</label><input id="pName" value="${esc(P.name || "")}"></div>
+      <div class="field"><label for="pAddr">Indirizzo</label><input id="pAddr" value="${esc(P.address || "")}"></div></div>
+      <div class="g3"><div class="field"><label for="pMail">E-mail assistenza</label><input id="pMail" type="email" value="${esc(P.email || "")}"></div>
+      <div class="field"><label for="pPhone">Telefono / WhatsApp</label><input id="pPhone" value="${esc(P.phone || "")}"></div>
+      <div class="field"><label for="pTax">Steuer-Nr. / USt-IdNr.</label><input id="pTax" value="${esc(P.tax_id || "")}"></div></div>
+      <div class="field"><span class="lbl">La tua firma (per i contratti)</span><canvas class="sigpad" id="sigP"></canvas><button class="btn ghost" type="button" id="sigPx" style="justify-self:start">Cancella</button></div></div>
+    <div class="actions"><span class="sp"></span><button class="btn" type="button" id="pCancel">Annulla</button><button class="btn primary" type="button" id="pSave">Salva</button></div>`);
+  const pad = IH.contract.pad($("sigP"));
+  if (P.signature) setTimeout(() => pad.load(P.signature), 150);
+  $("sigPx").onclick = () => pad.clear();
+  $("dX").onclick = $("pCancel").onclick = closeDialog;
+  $("pSave").onclick = async () => {
+    const v = id => $(id).value.trim() || null;
+    const row = { id: 1, name: v("pName"), address: v("pAddr"), email: v("pMail"), phone: v("pPhone"), tax_id: v("pTax"), signature: pad.empty ? null : pad.jpeg(), updated_at: new Date().toISOString() };
+    const { error } = await sb.from("platform_profile").upsert(row);
+    if (error) return IH.toast(error.message, "err");
+    profile = { ...P, ...row }; closeDialog(); IH.toast("Profilo salvato");
+  };
+}
+function signedView(k, blob){
+  const url = URL.createObjectURL(blob), name = cFile(k);
+  const file = new File([blob], name, { type: "application/pdf" });
+  const canShare = navigator.canShare && navigator.canShare({ files: [file] });
+  $("eBody").innerHTML = `<div class="grid" style="text-align:center;justify-items:center;padding:12px 0">
+    <div class="donek">✓</div><h3 style="margin:0">Contratto firmato</h3>
+    <p class="muted" style="margin:0;max-width:46ch">Nr. ${esc(k.terms.nr)} · ${esc(k.signer_name)} · ${esc(ed.c.name)}. Il cliente lo trova già nella sua Dashboard → Support.</p>
+    <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <a class="btn primary" href="${url}" download="${esc(name)}">Scarica PDF</a>
+      ${canShare ? `<button class="btn" type="button" id="kShare">Invia al cliente…</button>` : ""}
+      <button class="btn" type="button" id="kBack">Torna al contratto</button></div></div>`;
+  if ($("kShare")) $("kShare").onclick = () => navigator.share({ files: [file], title: name, text: `Ihr unterschriebener Vertrag – ${ed.c.name}` }).catch(() => {});
+  $("kBack").onclick = () => { ed.tab = "contratto"; paintEditor(); };
 }
 
 /* ---------- step 2: menu from the flyer ---------- */
