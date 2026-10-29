@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 /* =====================================================================
    Imbiss – login gate for the staff apps (Kasse, Dashboard, Küche)
    One login works for all staff apps on the same device.
@@ -8,15 +9,19 @@
   const { $, esc } = IH;
 
   // role: "staff" (restaurant team) or "platform" (owner of the platform – no sign-up, no auto-admin)
-  IH.staffGate = function ({ app, logo = "../assets/logo.jpg", onReady, allowSignup = true, role = "staff" }) {
+  IH.staffGate = function ({ app, logo, onReady, allowSignup = true, role = "staff" }) {
     if (role === "platform") allowSignup = false;
+    // before login: logo of the restaurant from ?l= or of the last login on this device
+    const last = IH.urlClient() || IH.store.get("ih-last-client") || IH.DEFAULT_CLIENT;
+    const pre = role === "platform" ? null : IH.brandCached(last);
+    if (!logo) logo = (pre && pre.logo_url) || IH.BRAND_DEFAULT.logo_url;
     const sb = IH.client();
     IH.sb = sb;
     const gate = document.createElement("div");
     gate.className = "gate"; gate.hidden = true;
     gate.innerHTML = `
       <div class="box" id="g-login">
-        <img src="${logo}" width="846" height="490" alt="Imbiss Hirsch">
+        <img data-brand-logo src="${logo}" alt="">
         <p class="appname">${esc(app)}</p>
         <p id="g-msg">Mit deinem Personal-Konto anmelden.</p>
         <div class="field"><label for="g-email">E-Mail</label><input id="g-email" type="email" autocomplete="username"></div>
@@ -28,7 +33,7 @@
         </div>
       </div>
       <div class="box" id="g-wait" hidden>
-        <img src="${logo}" width="846" height="490" alt="Imbiss Hirsch">
+        <img data-brand-logo src="${logo}" alt="">
         <p class="appname">Fast geschafft</p>
         <p>Dein Konto <b id="g-who"></b> ist angelegt. Ein Admin schaltet dich im <b>Dashboard → Team</b> frei.</p>
         <div class="row"><button class="btn" id="g-re" type="button">Erneut prüfen</button><button class="btn" type="button" data-logout>Abmelden</button></div>
@@ -58,10 +63,22 @@
         const c = await sb.rpc("claim_first_admin");
         if (c.data === true) r = await sb.from("staff").select("*").eq("user_id", me.id).maybeSingle();
       }
-      if (!r.data) { $("g-who").textContent = me.email; return show("wait"); }
+      // which restaurant: own one from the login; the platform owner may open any with ?l=
+      const want = IH.urlClient();
+      let staff = r.data, platform = false;
+      if (want && (!staff || want !== staff.client_id) || !staff) {
+        const { data: pa } = await sb.rpc("is_platform_admin");
+        platform = pa === true;
+        if (platform) staff = { ...(staff || { user_id: me.id, email: me.email }), is_admin: true, client_id: want || staff?.client_id || IH.DEFAULT_CLIENT, platform: true };
+      }
+      if (!staff) { $("g-who").textContent = me.email; return show("wait"); }
+      IH.CID = staff.client_id || IH.DEFAULT_CLIENT;
+      if (!platform) IH.store.set("ih-last-client", IH.CID);
+      IH.BRAND = (await IH.brand(sb, IH.CID)) || { ...IH.BRAND_DEFAULT, id: IH.CID, name: IH.CID, logo_url: null, cover_url: null };
+      IH.applyBrand(IH.BRAND, { app });
       show("app");
-      document.querySelectorAll("[data-who]").forEach((el) => (el.textContent = me.email + (r.data.is_admin ? " · Admin" : "")));
-      onReady({ sb, me, staff: r.data });
+      document.querySelectorAll("[data-who]").forEach((el) => (el.textContent = me.email + (staff.is_admin ? " · Admin" : "") + (platform ? " · " + IH.BRAND.name : "")));
+      onReady({ sb, me, staff, client: IH.CID, brand: IH.BRAND });
     }
     $("g-in").onclick = async () => {
       err("");

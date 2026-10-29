@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de" class="shell">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Kasse</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -102,7 +104,7 @@
 
 <div id="app" hidden>
   <header class="appbar">
-    <a class="brand" href="#kasse"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Kasse</b></a>
+    <a class="brand" href="#kasse"><img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Kasse</b></a>
     <nav class="tabs" aria-label="Bereiche">
       <a class="tab" href="#kasse">Bestellungen<span class="badge" data-badge hidden>0</span></a>
       <a class="tab" href="#neu">Neue Bestellung</a>
@@ -138,7 +140,7 @@
 
 <div class="starter" id="starter" hidden>
   <div>
-    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
     <p class="appname">Kasse</p>
     <p>Antippen, damit neue Bestellungen und fertige Gerichte mit Ton gemeldet werden.</p>
     <button class="btn big primary" type="button" id="startBtn">Kasse starten</button>
@@ -152,16 +154,16 @@
 <script>
 const { $, esc, eur, hhmm, minsAgo, where, CH, SRC, ST, PAY, PM } = IH;
 let sb, me, staff;
-let cats = [], items = [], orders = [];
+let cats = [], items = [], orders = [], CID = IH.CID;
 const seen = new Set(), lastState = new Map();
 let firstLoad = true, current = "kasse", deliveryOn = true;
 
-IH.splash("../assets/logo.jpg", "Kasse");
+IH.splash((IH.brandCached(IH.store.get("ih-last-client") || IH.CID) || IH.BRAND_DEFAULT).logo_url || "../assets/logo.jpg", "Kasse");
 IH.staffGate({ app: "Kasse", onReady: async (ctx) => {
-  ({ sb, me, staff } = ctx);
+  ({ sb, me, staff } = ctx); CID = ctx.client;
   if (!IH.sound.on) $("starter").hidden = false;
   await loadMenu();
-  sb.from("settings").select("value").eq("key", "delivery_enabled").maybeSingle().then(({ data }) => { if (data) deliveryOn = data.value !== false; });
+  sb.from("settings").select("value").eq("client_id", CID).eq("key", "delivery_enabled").maybeSingle().then(({ data }) => { if (data) deliveryOn = data.value !== false; });
   await loadOrders();
   subscribe();
   route();
@@ -177,13 +179,13 @@ $("soundBtn").onclick = () => { if (IH.sound.on) IH.sound.off(); else { IH.sound
 
 /* ---------- data ---------- */
 async function loadMenu(){
-  const [c, i] = await Promise.all([sb.from("categories").select("*").order("sort"), sb.from("menu_items").select("*").order("sort")]);
+  const [c, i] = await Promise.all([sb.from("categories").select("*").eq("client_id", CID).order("sort"), sb.from("menu_items").select("*").eq("client_id", CID).order("sort")]);
   if (c.error || i.error) return IH.toast("Speisekarte konnte nicht geladen werden", "err");
   cats = c.data; items = i.data;
 }
 async function loadOrders(){
   const [from] = IH.dayRange(IH.berlinToday());
-  const { data, error } = await sb.from("orders").select("*, order_items(*)")
+  const { data, error } = await sb.from("orders").select("*, order_items(*)").eq("client_id", CID)
     .or(`status.in.(neu,zubereitung,fertig,unterwegs),created_at.gte.${from}`)
     .order("created_at", { ascending: true }).limit(400);
   $("conn").classList.toggle("off", !!error);
@@ -216,10 +218,10 @@ let reloadT;
 function subscribe(){
   const again = () => { clearTimeout(reloadT); reloadT = setTimeout(loadOrders, 350); };
   sb.channel("kasse")
-    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, again)
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `client_id=eq.${CID}` }, again)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_items" }, again)
-    .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; IH.toast(deliveryOn ? "Lieferservice aktiv" : "Lieferservice pausiert"); if (current === "neu") renderNew(); } })
-    .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => loadMenu().then(() => current === "neu" && renderNew()))
+    .on("postgres_changes", { event: "*", schema: "public", table: "settings", filter: `client_id=eq.${CID}` }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; IH.toast(deliveryOn ? "Lieferservice aktiv" : "Lieferservice pausiert"); if (current === "neu") renderNew(); } })
+    .on("postgres_changes", { event: "*", schema: "public", table: "menu_items", filter: `client_id=eq.${CID}` }, () => loadMenu().then(() => current === "neu" && renderNew()))
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
   setInterval(loadOrders, 30000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) loadOrders(); });
@@ -429,7 +431,7 @@ function ndCapture(){
 }
 async function ndSend(){
   ndCapture(); nd.err = "";
-  const p = { channel: nd.channel, source: nd.source, payment: nd.payment, table_no: nd.channel === "tisch" ? nd.table : null,
+  const p = { client: CID, channel: nd.channel, source: nd.source, payment: nd.payment, table_no: nd.channel === "tisch" ? nd.table : null,
     name: nd.channel === "tisch" ? null : nd.name, phone: nd.channel === "tisch" ? null : nd.phone,
     address: nd.channel === "lieferung" ? nd.address : null, note: nd.note, lang: "de",
     items: Object.entries(nd.cart).map(([id, qty]) => ({ id, qty })) };

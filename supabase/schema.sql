@@ -331,3 +331,8 @@ create trigger t_orders_delivery_stamp before update on public.orders for each r
 -- Tabellen platform_admins, clients, client_payments; orders.client_id (Standard 'hirsch');
 -- Funktionen is_platform_admin(), platform_overview(p_months) – nur Summen pro Kunde und Monat, keine Gästedaten.
 -- Vollständige Definition: Migration "platform_owner_dashboard".
+
+-- ===================== Mehrere Betriebe (GallopaySystem) =====================
+-- Teil 1 ist eingespielt (Spalten client_id, Branding in clients, get_client, can_access, my_client,
+-- place_order mit 'client', ready_board(p_client), add_staff(p_email,p_admin,p_client), Bucket 'brand').
+-- Teil 2 (Primärschlüssel pro Betrieb + Zugriffsregeln): siehe migrations/multi_tenant_part2.sql

@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Abholung</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -56,7 +58,7 @@ body{display:flex;flex-direction:column;font-size:18px}
 </head>
 <body>
 <header class="head">
-  <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+  <img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
   <span class="msg" id="msg"><span>Willkommen · Welcome · Benvenuti · Hoş geldiniz</span></span>
   <span class="sp"></span>
   <span class="conn" id="conn" title="Verbindung"></span>
@@ -70,7 +72,7 @@ body{display:flex;flex-direction:column;font-size:18px}
 
 <div class="starter" id="starter">
   <div>
-    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
     <p class="appname">Abhol-Anzeige</p>
     <p>Für den Bildschirm im Gastraum. Antippen, damit der Ton bei fertigen Bestellungen klingelt.</p>
     <button class="btn big primary" type="button" id="startBtn">Anzeige starten</button>
@@ -88,7 +90,7 @@ const freshUntil = {};
 const label = o => o.channel === "tisch" && o.table_no ? `Tisch ${esc(o.table_no)}` : o.channel === "lieferung" ? "Lieferung" : "Abholung";
 
 async function load(){
-  const { data, error } = await sb.rpc("ready_board");
+  const { data, error } = await sb.rpc("ready_board", { p_client: IH.CID });
   $("conn").classList.toggle("off", !!error);
   if (error || !Array.isArray(data)) return;
   const board = data.filter(o => o.channel !== "lieferung");
@@ -113,7 +115,14 @@ function announce(o){
 }
 
 // rotating welcome line in the header
-const MSG = ["Willkommen · Welcome · Benvenuti · Hoş geldiniz", "Täglich frisch aus 100 % Hochrippe", "Bestellen per QR-Code am Tisch", "Tantuni & Burger seit 1975"];
+let MSG = ["Willkommen · Welcome · Benvenuti · Hoş geldiniz", "Täglich frisch aus 100 % Hochrippe", "Bestellen per QR-Code am Tisch", "Tantuni & Burger seit 1975"];
+// restaurant from ?l= (without: Imbiss Hirsch)
+IH.applyBrand(IH.brandCached(), { app: "Abholung" });
+IH.brand(sb).then(b => {
+  if (!b) return;
+  IH.applyBrand(b, { app: "Abholung" });
+  if (b.id !== IH.DEFAULT_CLIENT) MSG = ["Willkommen · Welcome · Benvenuti · Hoş geldiniz", IH.pickL(b.subline), "Bestellen per QR-Code am Tisch", IH.pickL(b.tagline)].filter(Boolean);
+});
 let mi = 0;
 setInterval(() => { mi = (mi + 1) % MSG.length; $("msg").innerHTML = `<span>${esc(MSG[mi])}</span>`; }, 8000);
 

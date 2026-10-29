@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de" class="shell">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Dashboard</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -102,6 +104,7 @@
 .mtools input{max-width:320px}
 .mcat{margin-bottom:26px}
 .mcat h3{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.mcat h3 .sp{flex:1}.mcat h3 .btn.ghost{padding:6px 12px}
 .mrow{display:grid;grid-template-columns:minmax(0,1fr) 96px 96px 70px 140px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);transition:background-color .3s}
 .mrow.saved{animation:savedFlash 1s ease}
 @keyframes savedFlash{30%{background:rgba(127,191,95,.12)}}
@@ -161,7 +164,7 @@
 
 <div id="app" hidden>
   <header class="appbar">
-    <a class="brand" href="#uebersicht"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Dashboard</b></a>
+    <a class="brand" href="#uebersicht"><img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Dashboard</b></a>
     <span class="sp"></span>
     <span class="conn" id="conn" title="Live-Verbindung"></span>
     <span class="who" data-who></span>
@@ -209,12 +212,15 @@
 <script>
 const { $, esc, eur, hhmm, where, CH, SRC, ST, PAY, PM, store } = IH;
 const LANGS = ["de","en","it","tr","fr"];
-let sb, me, staff, cats = [], items = [], current = null;
+let sb, me, staff, cats = [], items = [], current = null, CID = IH.CID, logoImg = null;
+const B = () => IH.BRAND || IH.BRAND_DEFAULT;
 let deliveryOn = true;
 
-IH.splash("../assets/logo.jpg", "Dashboard");
+IH.splash((IH.brandCached(IH.store.get("ih-last-client") || IH.CID) || IH.BRAND_DEFAULT).logo_url || "../assets/logo.jpg", "Dashboard");
 IH.staffGate({ app: "Dashboard", onReady: async (ctx) => {
-  ({ sb, me, staff } = ctx);
+  ({ sb, me, staff } = ctx); CID = ctx.client;
+  logoImg = brandImg();
+  if (staff.platform) IH.toast("Plattform-Modus: " + B().name);
   await Promise.all([loadMenu(), loadSettings()]);
   subscribe();
   route();
@@ -228,12 +234,12 @@ addEventListener("keydown", e => { if (e.key === "Escape" && !$("dialog").hidden
 
 /* ---------- data ---------- */
 async function loadMenu(){
-  const [c, i] = await Promise.all([sb.from("categories").select("*").order("sort"), sb.from("menu_items").select("*").order("sort")]);
+  const [c, i] = await Promise.all([sb.from("categories").select("*").eq("client_id", CID).order("sort"), sb.from("menu_items").select("*").eq("client_id", CID).order("sort")]);
   if (c.error || i.error) return IH.toast("Speisekarte konnte nicht geladen werden", "err");
   cats = c.data; items = i.data;
 }
 async function loadSettings(){
-  const { data } = await sb.from("settings").select("key,value").eq("key", "delivery_enabled").maybeSingle();
+  const { data } = await sb.from("settings").select("key,value").eq("client_id", CID).eq("key", "delivery_enabled").maybeSingle();
   if (data) deliveryOn = data.value !== false;
 }
 function deliveryCard(){
@@ -248,7 +254,9 @@ function wireDelivery(){
   sw.onclick = async () => {
     const val = !deliveryOn;
     deliveryOn = val; paintDelivery();
-    const { error } = await sb.from("settings").upsert({ key: "delivery_enabled", value: val });
+    // update this restaurant's row; insert only if it does not exist yet (never touches another restaurant)
+    let { data: upd, error } = await sb.from("settings").update({ value: val }).eq("client_id", CID).eq("key", "delivery_enabled").select("key");
+    if (!error && !(upd && upd.length)) ({ error } = await sb.from("settings").insert({ client_id: CID, key: "delivery_enabled", value: val }));
     if (error){ deliveryOn = !val; paintDelivery(); return IH.toast("Konnte nicht gespeichert werden", "err"); }
     IH.toast(val ? "Lieferservice ist wieder aktiv" : "Lieferservice pausiert");
   };
@@ -263,11 +271,11 @@ function paintDelivery(){
 let liveT;
 function subscribe(){
   sb.channel("dashboard")
-    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `client_id=eq.${CID}` }, () => {
       if (current === "uebersicht" && statsDay === IH.berlinToday()){ clearTimeout(liveT); liveT = setTimeout(() => renderStats(false), 1200); }
     })
-    .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; paintDelivery(); } })
-    .on("postgres_changes", { event: "*", schema: "public", table: "feedback" }, () => { if (current === "bewertungen") renderReviews(false); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "settings", filter: `client_id=eq.${CID}` }, p => { if (p.new && p.new.key === "delivery_enabled"){ deliveryOn = p.new.value !== false; paintDelivery(); } })
+    .on("postgres_changes", { event: "*", schema: "public", table: "feedback", filter: `client_id=eq.${CID}` }, () => { if (current === "bewertungen") renderReviews(false); })
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
 }
 
@@ -299,7 +307,7 @@ async function renderStats(animate){
   }
   const from = IH.dayRange(IH.addDays(statsDay, -6))[0], to = IH.dayRange(statsDay)[1];
   const { data, error } = await sb.from("orders").select("id,created_at,total,status,channel,source,payment,pay_method,customer_name,table_no,pickup_code,address,eta_at,out_at,delivered_at,driver_email,order_items(name_de,qty,unit_price)")
-    .gte("created_at", from).lt("created_at", to).order("created_at");
+    .eq("client_id", CID).gte("created_at", from).lt("created_at", to).order("created_at");
   if (error){ V.innerHTML = head(isToday) + `<div class="empty">Konnte nicht geladen werden.</div>`; wireDay(); wireDelivery(); return; }
   const dayOf = o => { const p = IH.berlinParts(new Date(o.created_at)); return `${p.year}-${p.month}-${p.day}`; };
   const byDay = {}; for (const o of data) (byDay[dayOf(o)] ||= []).push(o);
@@ -391,7 +399,7 @@ async function renderReviews(animate){
   const V = $("v-bewertungen");
   if (animate) V.innerHTML = `<h2 class="view">Bewertungen</h2><div class="kpis">${[1,2,3].map(() => `<div class="kpi skeleton" style="height:112px"></div>`).join("")}</div>`;
   const since = new Date(Date.now() - revDays * 864e5).toISOString();
-  const { data, error } = await sb.from("feedback").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(500);
+  const { data, error } = await sb.from("feedback").select("*").eq("client_id", CID).gte("created_at", since).order("created_at", { ascending: false }).limit(500);
   if (error){ V.innerHTML = `<h2 class="view">Bewertungen</h2><div class="empty">Konnte nicht geladen werden.</div>`; return; }
   const n = data.length, avg = n ? data.reduce((s, f) => s + f.rating, 0) / n : 0;
   const dist = [5,4,3,2,1].map(k => ({ k, c: data.filter(f => f.rating === k).length }));
@@ -408,7 +416,7 @@ async function renderReviews(animate){
     <div class="grid2${g}">
       <div class="box"><h3>Verteilung</h3><ol class="toplist">${dist.map((d, i) => `<li style="--i:${i}"><i style="width:${d.c / maxC * 100}%;background:rgba(229,181,74,.18)"></i><span>${stars(d.k)}</span><b>${d.c}</b></li>`).join("")}</ol>
         <p class="muted" style="margin:14px 0 0;font-size:13px">Nach dem Abholen fragt die Kunden-App nach Sternen und bietet allen Gästen den Link zu Google an.</p>
-        <a class="btn" style="margin-top:12px" href="https://www.google.com/maps/place/?q=place_id:ChIJRyl0sXnUmUcR2bfdsW0bjqs" target="_blank" rel="noopener">Google-Profil öffnen</a></div>
+        ${B().google_review_url || CID === IH.DEFAULT_CLIENT ? `<a class="btn" style="margin-top:12px" href="${esc(B().google_review_url || IH_CONFIG.googleReview)}" target="_blank" rel="noopener">Google-Bewertungsseite öffnen</a>` : `<p class="muted" style="margin:12px 0 0;font-size:13px">Noch kein Google-Link hinterlegt.</p>`}</div>
       <div class="box"><h3>Kommentare<small>${data.filter(f => f.comment).length}</small></h3><div class="revlist">${data.filter(f => f.comment).slice(0, 60).map(f => `<div class="rev" data-rv>
           <div class="rh">${stars(f.rating)}<span class="muted">#${f.order_id} · ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(f.created_at))}${f.lang && f.lang !== "de" ? " · " + esc(f.lang.toUpperCase()) : ""}${f.went_to_google ? " · Google" : ""}</span></div>
           <p>${esc(f.comment)}</p></div>`).join("") || `<div class="empty">Noch keine Kommentare.</div>`}</div></div>
@@ -424,11 +432,12 @@ let mq = "";
 function renderMenuEditor(){
   const q = mq.trim().toLowerCase();
   let h = `<h2 class="view">Speisekarte<span class="sp"></span><span class="muted" style="font-size:15px;font-family:var(--body);text-transform:none;font-weight:400">Änderungen sind sofort bei Gästen und an der Kasse sichtbar</span></h2>
-    <div class="mtools"><input type="search" id="mQ" placeholder="Gericht suchen …" value="${esc(mq)}" aria-label="Gericht suchen"></div>`;
+    <div class="mtools"><input type="search" id="mQ" placeholder="Gericht suchen …" value="${esc(mq)}" aria-label="Gericht suchen"><button class="btn" type="button" id="mNewCat">+ Kategorie</button></div>`;
+  if (!cats.length) h += `<div class="empty">Noch keine Speisekarte. Lege zuerst eine Kategorie an (z. B. „Burger“, „Getränke“).</div>`;
   for (const c of cats){
     const list = items.filter(i => i.category_id === c.id && (!q || (i.names.de || "").toLowerCase().includes(q)));
     if (q && !list.length) continue;
-    h += `<div class="mcat"><h3>${esc(c.names.de)}<button class="btn" type="button" data-newin="${esc(c.id)}">+ Gericht</button></h3>
+    h += `<div class="mcat"><h3>${esc(c.names.de)}<span class="sp"></span><button class="btn ghost" type="button" data-editcat="${esc(c.id)}" aria-label="Kategorie bearbeiten">✎</button><button class="btn" type="button" data-newin="${esc(c.id)}">+ Gericht</button></h3>
       <div class="mhead"><span>Gericht</span><span>Abholen €</span><span>Liefern €</span><span>Aktiv</span><span></span></div>`
       + list.map(i => `<div class="mrow" data-id="${i.id}" data-rv>
         <div class="nm"><b>${esc(i.names.de)}</b><small>${esc(i.descs?.de || "")}</small></div>
@@ -456,6 +465,44 @@ function renderMenuEditor(){
   });
   V.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => editItem(items.find(x => x.id === b.dataset.edit)));
   V.querySelectorAll("[data-newin]").forEach(b => b.onclick = () => editItem(null, b.dataset.newin));
+  V.querySelectorAll("[data-editcat]").forEach(b => b.onclick = () => editCat(cats.find(c => c.id === b.dataset.editcat)));
+  $("mNewCat").onclick = () => editCat(null);
+}
+function editCat(c){
+  const isNew = !c;
+  c = c || { names: {}, is_drink: false, sort: cats.length ? Math.max(...cats.map(x => x.sort || 0)) + 1 : 0 };
+  openDialog(`<h3>${isNew ? "Neue Kategorie" : esc(c.names.de)}<button class="x" type="button" id="dX" aria-label="Schließen">×</button></h3>
+    <div class="grid">
+      <div class="field"><span class="lbl">Name (DE ist Pflicht)</span><div class="lgrid">${LANGS.map(l => `<span class="lc">${l.toUpperCase()}</span><input type="text" data-n="${l}" value="${esc(c.names?.[l] || "")}">`).join("")}</div></div>
+      <div class="g2"><div class="field"><label for="cSort">Position</label><input id="cSort" type="number" min="0" step="1" value="${c.sort ?? 0}"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:24px"><input type="checkbox" id="cDrink" ${c.is_drink ? "checked" : ""}> Getränke-Kategorie</label></div>
+      <p class="err" id="cErr" hidden></p>
+    </div>
+    <div class="actions">${!isNew && staff.is_admin && !items.some(i => i.category_id === c.id) ? `<button class="btn danger" type="button" id="cDel">Löschen</button>` : ""}<span class="sp"></span>
+      <button class="btn" type="button" id="cCancel">Abbrechen</button><button class="btn primary" type="button" id="cSave">Speichern</button></div>`);
+  $("dX").onclick = closeDialog; $("cCancel").onclick = closeDialog;
+  const fail = m => { $("cErr").textContent = m; $("cErr").hidden = false; };
+  $("cSave").onclick = async () => {
+    const names = {}; $("dialog").querySelectorAll("[data-n]").forEach(i => { const v = i.value.trim(); if (v) names[i.dataset.n] = v; });
+    if (!names.de) return fail("Bitte den deutschen Namen eintragen.");
+    const row = { names, is_drink: $("cDrink").checked, sort: parseInt($("cSort").value || "0", 10) };
+    let error;
+    if (isNew){
+      // ids stay unique across all restaurants
+      let id = (CID === IH.DEFAULT_CLIENT ? "" : CID + "-") + (IH.slug(names.de) || "kat"), n = 2;
+      while (cats.some(x => x.id === id)) id = id.replace(/-\d+$/, "") + "-" + n++;
+      ({ error } = await sb.from("categories").insert({ ...row, id, client_id: CID }));
+    } else ({ error } = await sb.from("categories").update(row).eq("client_id", CID).eq("id", c.id));
+    if (error) return fail(error.message);
+    closeDialog(); IH.toast("Gespeichert"); await loadMenu(); renderMenuEditor();
+  };
+  if ($("cDel")) $("cDel").onclick = async (e) => {
+    const b = e.currentTarget;
+    if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "Wirklich löschen?"; IH.bump(b); return; }
+    const { error } = await sb.from("categories").delete().eq("client_id", CID).eq("id", c.id);
+    if (error) return fail(error.message);
+    closeDialog(); IH.toast("Gelöscht"); await loadMenu(); renderMenuEditor();
+  };
 }
 function editItem(it, catId){
   const isNew = !it;
@@ -488,7 +535,7 @@ function editItem(it, catId){
     $("dialog").querySelectorAll("[data-d]").forEach(i => { const v = i.value.trim(); if (v) descs[i.dataset.d] = v; });
     if (!names.de) return fail("Bitte mindestens den deutschen Namen eintragen.");
     const num = v => v === "" ? null : Math.round(parseFloat(v.replace(",", ".")) * 100) / 100;
-    const row = { category_id: $("eCat").value, tag: $("eTag").value || null, price_pickup: num($("ePP").value), price_delivery: num($("ePD").value),
+    const row = { client_id: CID, category_id: $("eCat").value, tag: $("eTag").value || null, price_pickup: num($("ePP").value), price_delivery: num($("ePD").value),
       names, descs: Object.keys(descs).length ? descs : null, sort: parseInt($("eSort").value || "0", 10) };
     const { error } = isNew ? await sb.from("menu_items").insert(row) : await sb.from("menu_items").update(row).eq("id", it.id);
     if (error) return fail(error.message);
@@ -504,10 +551,12 @@ function editItem(it, catId){
 }
 
 /* ========== QR CODES ========== */
-const kundeUrl = () => new URL("../kunde/", location.href).href;
-const logoImg = new Image(); logoImg.src = "../assets/logo.jpg";
+const kundeUrl = () => IH.withL(new URL("../kunde/", location.href).href, CID);
+function brandImg(){ const im = new Image(); const u = B().logo_url || "../assets/logo.jpg"; if (/^https?:/.test(u)) im.crossOrigin = "anonymous"; im.src = u; return im; }
 function renderQR(){
-  const base = store.get("ih-base2") || kundeUrl();
+  // the saved address belongs to one restaurant only
+  let base = store.get(IH.key("ih-base2", CID)) || kundeUrl();
+  if (CID !== IH.DEFAULT_CLIENT && !base.includes("l=" + CID)) base = kundeUrl();
   const n = +(store.get("ih-tables") || 10);
   $("v-qr").innerHTML = `<h2 class="view">QR-Codes</h2>
     <p class="muted" style="margin-top:0;max-width:70ch">Jeder Tisch bekommt seinen eigenen Code. Gäste sehen die Karte in ihrer Sprache, bestellen an ihren Tisch und die Tischnummer erscheint auf der Abhol-Anzeige. Druckgröße: ca. 5 × 5 cm.</p>
@@ -516,10 +565,10 @@ function renderQR(){
     <div class="qrgrid" id="qGrid"></div>`;
   const draw = () => {
     const b = $("qBase").value.trim().replace(/#.*$/, ""), k = Math.max(1, Math.min(60, +$("qN").value || 1));
-    store.set("ih-base2", b); store.set("ih-tables", k);
+    store.set(IH.key("ih-base2", CID), b); store.set("ih-tables", k);
     const sep = b.includes("?") ? "&" : "?";
     const cards = [{ label: "Abholen & Liefern", url: b }].concat(Array.from({ length: k }, (_, i) => ({ label: `Tisch ${i + 1}`, url: `${b}${sep}tisch=${i + 1}` })));
-    $("qGrid").innerHTML = cards.map((c, i) => `<div class="qcard" data-rv><div class="top"><img src="../assets/logo.jpg" alt=""></div><div class="qr" id="qr${i}"></div><div class="tn">${esc(c.label)}</div><div class="ll">Speisekarte · Menu · Menü</div><button class="btn" type="button" data-dl="${i}">Als Bild speichern</button></div>`).join("");
+    $("qGrid").innerHTML = cards.map((c, i) => `<div class="qcard" data-rv><div class="top"><img src="${esc(B().logo_url || "../assets/logo.jpg")}" alt=""></div><div class="qr" id="qr${i}"></div><div class="tn">${esc(c.label)}</div><div class="ll">Speisekarte · Menu · Menü</div><button class="btn" type="button" data-dl="${i}">Als Bild speichern</button></div>`).join("");
     cards.forEach((c, i) => new QRCode($("qr" + i), { text: c.url, width: 400, height: 400, correctLevel: QRCode.CorrectLevel.M }));
     IH.reveal($("qGrid"));
     $("qGrid").querySelectorAll("[data-dl]").forEach(btn => btn.onclick = () => saveCard(cards[+btn.dataset.dl], $("qr" + btn.dataset.dl)));
@@ -531,7 +580,7 @@ function saveCard(card, qrBox){
   const g = c.getContext("2d");
   g.fillStyle = "#f6f2ea"; g.fillRect(0, 0, W, H);
   g.fillStyle = "#0d0c0b"; g.fillRect(0, 0, W, 380);
-  if (logoImg.complete && logoImg.naturalWidth){ const lw = 640, lh = lw * logoImg.naturalHeight / logoImg.naturalWidth; g.drawImage(logoImg, (W - lw) / 2, (380 - lh) / 2, lw, lh); }
+  if (logoImg && logoImg.complete && logoImg.naturalWidth){ const k = Math.min(640 / logoImg.naturalWidth, 320 / logoImg.naturalHeight), lw = logoImg.naturalWidth * k, lh = logoImg.naturalHeight * k; try { g.drawImage(logoImg, (W - lw) / 2, (380 - lh) / 2, lw, lh); } catch (e) {} }
   const q = qrBox.querySelector("canvas") || qrBox.querySelector("img");
   g.fillStyle = "#fff"; g.fillRect(200 - 16, 430 - 16, 432, 432);
   g.drawImage(q, 200, 430, 400, 400);
@@ -541,7 +590,7 @@ function saveCard(card, qrBox){
   g.fillText("SPEISEKARTE · MENU · MENÜ · MENÙ", W / 2, 990);
   g.fillStyle = "#555"; g.font = "500 24px 'Barlow', Arial, sans-serif";
   g.fillText("Scannen · bestellen · bezahlen", W / 2, 1040);
-  c.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `imbiss-qr-${card.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }, "image/png");
+  c.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${CID}-qr-${card.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }, "image/png");
   IH.toast("Bild gespeichert");
 }
 
@@ -555,14 +604,14 @@ function renderTeam(){
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tAdmin"> Admin</label><button class="btn primary" type="button" id="tAdd">Freischalten</button></div></div>
     <div class="team" id="tList"></div>`;
   $("tAdd").onclick = async () => {
-    const { error } = await sb.rpc("add_staff", { p_email: $("tEmail").value, p_admin: $("tAdmin").checked });
+    const { error } = await sb.rpc("add_staff", { p_email: $("tEmail").value, p_admin: $("tAdmin").checked, p_client: CID });
     if (error) return IH.toast(error.message, "err");
     IH.toast("Freigeschaltet"); $("tEmail").value = ""; loadTeam();
   };
   loadTeam();
 }
 async function loadTeam(){
-  const { data } = await sb.from("staff").select("*").order("created_at");
+  const { data } = await sb.from("staff").select("*").eq("client_id", CID).order("created_at");
   IH.flip("#tList", () => {
     $("tList").innerHTML = (data || []).map(s => `<div class="trow" data-k="${s.user_id}"><span class="em">${esc(s.email || s.user_id)}</span>${s.is_admin ? `<span class="pill">Admin</span>` : ""}
       ${s.user_id === me.id ? `<span class="muted">Du</span>` : `<button class="btn danger" type="button" data-rm="${s.user_id}">Entfernen</button>`}</div>`).join("");
@@ -578,13 +627,13 @@ async function loadTeam(){
 /* ========== APPS ========== */
 function renderApps(){
   const A = [
-    ["kunde", "Kunde", "Speisekarte in 5 Sprachen, bestellen, online oder bar bezahlen, Status live. Für Gäste per QR-Code.", "../kunde/"],
+    ["kunde", "Kunde", "Speisekarte in 5 Sprachen, bestellen, online oder bar bezahlen, Status live. Für Gäste per QR-Code.", IH.withL("../kunde/", CID)],
     ["kasse", "Kasse", "Bestellungen kassieren (Bar, Karte, Lieferung), an die Küche geben, ausgeben. Telefon- und WhatsApp-Bestellungen erfassen.", "../kasse/"],
     ["kueche", "Küche", "Großes Display: nur bezahlte Bestellungen, Start → Fertig, Eingangston. Für Tablet oder TV.", "../kueche/"],
     ["fahrer", "Fahrer", "Für die Lieferfahrer: fertige Lieferungen, Adresse mit einem Tipp in Google Maps, „Losfahren“ und „Zugestellt / Bar kassiert“.", "../fahrer/"],
-    ["abholung", "Abhol-Anzeige", "Für den TV im Gastraum: „Bitte abholen“ mit Bestell- und Tischnummer, Alarmton. Ohne Login.", "../abholung/"],
+    ["abholung", "Abhol-Anzeige", "Für den TV im Gastraum: „Bitte abholen“ mit Bestell- und Tischnummer, Alarmton. Ohne Login.", IH.withL("../abholung/", CID)],
     ["dashboard", "Dashboard", "Umsatz und Auswertung, Speisekarte und Preise, QR-Codes, Team.", "./"],
-  ];
+  ].map(([k, n, d, u]) => [k, n, d, IH.withL(u.replace(/\?l=.*$/, ""), CID)]);
   $("v-apps").innerHTML = `<h2 class="view">Apps</h2>
     <p class="muted" style="margin-top:0;max-width:70ch">Jede App einzeln auf dem passenden Gerät öffnen und installieren: iPhone → Teilen → „Zum Home-Bildschirm“, Android → Menü → „App installieren“.</p>
     <div class="apps">${A.map(([k, n, d, u]) => { const url = new URL(u, location.href).href; return `<div class="appcard" data-rv>

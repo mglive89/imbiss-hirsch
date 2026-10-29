@@ -1,6 +1,7 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 /* Imbiss – service worker for all apps (scope = project root).
    Bump VERSION after changing files so installed apps update. */
-const VERSION = "imbiss-v8";
+const VERSION = "imbiss-v9";
 const CORE = [
   "kunde/", "kunde/index.html", "kunde/manifest.webmanifest",
   "kasse/", "kasse/index.html", "kasse/manifest.webmanifest",

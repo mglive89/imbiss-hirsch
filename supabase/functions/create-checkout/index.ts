@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 // Creates a Stripe Checkout page (card, PayPal, Apple/Google Pay – whatever is enabled in Stripe)
 // for one open order. The guest proves the order is theirs with the order token.
 import Stripe from "npm:stripe@14.25.0";

@@ -1,10 +1,12 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="it" class="shell">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Imbiss Plattform</title>
-<meta name="theme-color" content="#0d0c0b">
+<title>GallopaySystem</title>
+<meta name="theme-color" content="#141110">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="../assets/icons/plattform-64.png">
@@ -12,13 +14,53 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Plattform">
+<meta name="apple-mobile-web-app-title" content="Gallopay">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
 <link rel="stylesheet" href="../shared/ih.css">
 <style>
 /* Owner view of the platform: money first (your earnings), then the clients that produce it. Gold accent = your money. */
-:root{--app:#e0bd8f;--gold:#e0bd8f;--fee:#c9a274;--prov:#7fbf5f;--setup:#7fa8d9}
+:root{--app:#F2B33D;--gold:#F2B33D;--crest:#E5392E;--fee:#c9a274;--prov:#7fbf5f;--setup:#7fa8d9}
+/* GallopaySystem brand */
+.gp{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg);min-width:0}
+.gp img{width:40px;height:40px;border-radius:10px}
+.gp span{font-family:var(--label);font-weight:700;font-size:20px;letter-spacing:.04em;white-space:nowrap}
+.gp span em{font-style:normal;font-weight:500;color:var(--gold)}
+.gate .box > img{width:132px;height:132px;margin:0 auto;border-radius:30px}
+.gate .appname{font-size:22px;letter-spacing:.06em}
+.splash img{width:min(40vw,200px);border-radius:40px}
+/* client editor */
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 14px}
+.steps button{flex:1;min-width:110px;border:1px solid var(--line);background:none;color:var(--muted);border-radius:12px;padding:9px 10px;font-family:var(--label);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:13px;cursor:pointer;text-align:left}
+.steps button b{display:block;font-size:11px;color:var(--faint);letter-spacing:.14em}
+.steps button[aria-current="true"]{border-color:var(--gold);color:var(--fg);background:rgba(242,179,61,.08)}
+.steps button:disabled{opacity:.4;cursor:default}
+.drops{display:grid;grid-template-columns:200px 1fr;gap:12px}
+@media (max-width:560px){.drops{grid-template-columns:1fr}}
+.drop{position:relative;border:1.5px dashed #4a443d;border-radius:14px;min-height:150px;display:grid;place-items:center;text-align:center;padding:10px;cursor:pointer;overflow:hidden;background:#141110;transition:border-color .2s}
+.drop:hover,.drop.over{border-color:var(--gold)}
+.drop img{max-width:100%;max-height:170px;object-fit:contain;display:block}
+.drop span{color:var(--muted);font-size:14px}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop small{position:absolute;left:8px;bottom:6px;font-size:11px;color:var(--faint)}
+.hours{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 8px;align-items:center}
+.hours label{font-size:14px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+.hours input[type=time]{padding:6px 8px}
+.linkrow{display:grid;grid-template-columns:110px minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.linkrow b{font-family:var(--label);text-transform:uppercase;letter-spacing:.06em}
+.linkrow code{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:560px){.linkrow{grid-template-columns:1fr auto auto}.linkrow code{grid-column:1/-1;order:3}}
+.qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.qrbox .q{background:#fff;padding:10px;border-radius:10px;width:150px;height:150px}
+.qrbox .q img,.qrbox .q canvas{width:130px!important;height:130px!important}
+.mprev{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:6px 12px}
+.mprev h4{font-family:var(--label);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px;color:var(--gold)}
+.mprev div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14px;border-bottom:1px dotted var(--line)}
+.mprev div span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.ok2{background:rgba(127,191,95,.08);border:1px solid #3e5f2f;border-radius:10px;padding:10px 12px;font-size:14px}
+.cname{display:flex;align-items:center;gap:10px}
+.cname .lg{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#141110;border:1px solid var(--line);flex:none}
+.cname .lg.none{display:grid;place-items:center;font-family:var(--label);font-weight:700;color:var(--gold)}
 .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 .top h2{margin:0}
 .top .sp{flex:1}
@@ -85,7 +127,7 @@
 
 <div id="app" hidden>
   <header class="appbar">
-    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt=""><b>Plattform</b></a>
+    <a class="gp" href="./"><img src="../assets/icons/plattform-apple.png" alt=""><span>Gallopay<em>System</em></span></a>
     <span class="sp"></span>
     <span class="who" data-who></span>
     <button class="btn ghost" type="button" data-logout>Esci</button>
@@ -100,6 +142,7 @@
 <script src="../shared/config.js"></script>
 <script src="../shared/ih.js"></script>
 <script src="../shared/staff.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const { $, esc } = IH;
 const eur = v => IH.eur(v, "de-DE");   // 4.200,00 € – grouping also for 4-digit amounts
@@ -110,8 +153,8 @@ let ym = IH.berlinToday().slice(0, 7);
 const nowYM = IH.berlinToday().slice(0, 7);
 const prevKpi = {};
 
-IH.splash("../assets/logo.jpg", "Plattform");
-IH.staffGate({ app: "Plattform", role: "platform", onReady: async (ctx) => { sb = ctx.sb; await load(true); live(); } });
+IH.splash("../assets/icons/plattform-512.png", "");
+IH.staffGate({ app: "GallopaySystem", logo: "../assets/icons/plattform-apple.png", role: "platform", onReady: async (ctx) => { sb = ctx.sb; await load(true); live(); } });
 
 /* ---------- data ---------- */
 async function load(animate){
@@ -167,7 +210,7 @@ function render(animate){
     const d = due(c, ym), paid = paidFor(c.id, ym);
     const payCell = (e.fee + e.prov) === 0 ? `<span class="muted">—</span>` : d <= 0.005 ? `<span class="paid">✓ Pagato</span>` : `<span class="due">${eur(d)} da incassare</span> <button class="btn" type="button" data-pay="${esc(c.id)}" style="padding:4px 10px;font-size:13px;margin-left:6px">Segna pagato</button>`;
     return `<tr class="row" data-open="${esc(c.id)}">
-      <td class="cname"><b>${esc(c.name)}</b><span>${esc(c.city || "")} · <span class="pill ${c.status}">${STATUS[c.status]}</span></span></td>
+      <td><div class="cname">${c.logo_url ? `<img class="lg" src="${esc(c.logo_url)}" alt="">` : `<span class="lg none">${esc((c.name || "?")[0])}</span>`}<div><b>${esc(c.name)}</b><span>${esc(c.city || "")} · <span class="pill ${c.status}">${STATUS[c.status]}</span></span></div></div></td>
       <td>${a.orders}</td>
       <td>${eur(a.revenue)}${tr === null ? "" : `<span class="trend ${tr >= 0 ? "up" : "down"}">${tr >= 0 ? "▲" : "▼"}${Math.abs(tr)}%</span>`}</td>
       <td>${eur(a.online)}</td>
@@ -222,16 +265,69 @@ function closeDialog(){ IH.close($("dialog"), $("scrim"), () => $("dialog").inne
 $("scrim").onclick = closeDialog;
 addEventListener("keydown", e => { if (e.key === "Escape" && !$("dialog").hidden) closeDialog(); });
 
-function editClient(c){
+/* ========== CLIENT EDITOR: locale · menù · contratto · app ==========
+   Every client gets the same apps, with its own logo, data and menu (?l=<id>). */
+const FN = name => `${IH_CONFIG.url}/functions/v1/${name}`;
+const appUrl = (app, cid) => IH.withL(new URL(`../${app}/`, location.href).href, cid);
+const GIORNI = [[1, "Lun"], [2, "Mar"], [3, "Mer"], [4, "Gio"], [5, "Ven"], [6, "Sab"], [0, "Dom"]];
+const hm = h => { const m = Math.round(+h * 60); return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+const toH = t => { const [a, b] = String(t || "").split(":").map(Number); return isNaN(a) ? null : a + (b || 0) / 60; };
+const APPS = [["kunde", "Ospiti", "Menù e ordini via QR – da stampare sui tavoli"], ["abholung", "Display", "TV in sala: “pronto da ritirare”"],
+  ["kasse", "Cassa", "Login personale"], ["kueche", "Cucina", "Login personale"], ["fahrer", "Fattorino", "Login personale"], ["dashboard", "Dashboard", "Per il titolare: menù, prezzi, QR, team"]];
+let ed = null;   // editor state
+
+function editClient(c, tab){
   const isNew = !c;
-  c = c || { id: "", name: "", city: "", contact: "", status: "test", monthly_fee: 59, setup_fee: 990, setup_paid: false, pct_online: 0, fee_per_order: 0, started_at: IH.berlinToday(), trial_until: IH.addDays(IH.berlinToday(), 30), notes: "" };
-  const hist = isNew ? "" : months(12).slice().reverse().filter(m => m >= c.started_at.slice(0, 7)).map(m => { const e = earn(c, m); return `<tr><td>${ymLabel(m)}</td><td>${e.a.orders}</td><td>${eur(e.a.revenue)}</td><td>${eur(e.a.online)}</td><td class="earn" style="font-size:15px">${eur(e.total)}</td><td>${paidFor(c.id, m) ? `<span class="paid">${eur(paidFor(c.id, m))}</span>` : "—"}</td></tr>`; }).join("");
-  openDialog(`<h3>${isNew ? "Nuovo cliente" : esc(c.name)}<button class="x" type="button" id="dX" aria-label="Chiudi">×</button></h3>
-    <div class="grid">
-      <div class="g2"><div class="field"><label for="cName">Nome attività</label><input id="cName" type="text" value="${esc(c.name)}"></div>
+  const base = c || { id: "", name: "", city: "", contact: "", status: "test", monthly_fee: 59, setup_fee: 990, setup_paid: false, pct_online: 0, fee_per_order: 0,
+    started_at: IH.berlinToday(), trial_until: IH.addDays(IH.berlinToday(), 30), notes: "", hours: { 1: [11, 22], 2: [11, 22], 3: [11, 22], 4: [11, 22], 5: [11, 22], 6: [12, 22] } };
+  ed = { c: { ...base, hours: { ...(base.hours || {}) } }, isNew, tab: tab || "locale", files: {}, prev: {}, flyer: null, menuCount: null };
+  openDialog(`<h3><span id="eTitle">${isNew ? "Nuovo cliente" : esc(base.name)}</span><button class="x" type="button" id="dX" aria-label="Chiudi">×</button></h3>
+    <nav class="steps" id="eSteps"></nav><div id="eBody"></div>`);
+  $("dX").onclick = closeDialog;
+  paintEditor();
+}
+function paintSteps(){
+  const T = [["locale", "1", "Locale"], ["menu", "2", "Menù"], ["contratto", "3", "Contratto"], ["app", "4", "App e accesso"]];
+  $("eSteps").innerHTML = T.map(([k, n, l]) => `<button type="button" data-t="${k}" aria-current="${ed.tab === k}" ${ed.isNew && k !== "locale" && k !== "contratto" ? "disabled" : ""}><b>${n}</b>${l}</button>`).join("");
+  $("eSteps").querySelectorAll("button").forEach(b => b.onclick = () => { captureEditor(); ed.tab = b.dataset.t; paintEditor(); });
+}
+function paintEditor(){
+  paintSteps();
+  const c = ed.c, B = $("eBody");
+  if (ed.tab === "locale"){
+    const img = (k, url) => ed.prev[k] || url;
+    B.innerHTML = `<div class="grid">
+      <div class="drops">
+        <label class="drop" id="dLogo">${img("logo", c.logo_url) ? `<img src="${esc(img("logo", c.logo_url))}" alt="">` : `<span>Logo del cliente<br><b>tocca o trascina</b></span>`}<small>Logo</small><input type="file" accept="image/png,image/jpeg,image/webp" data-file="logo"></label>
+        <label class="drop" id="dCover">${img("cover", c.cover_url) ? `<img src="${esc(img("cover", c.cover_url))}" alt="">` : `<span>Foto di copertina (facoltativa)<br>es. la parte alta del volantino</span>`}<small>Copertina app ospiti</small><input type="file" accept="image/png,image/jpeg,image/webp" data-file="cover"></label>
+      </div>
+      <div class="g2"><div class="field"><label for="cName">Nome attività</label><input id="cName" type="text" value="${esc(c.name)}" placeholder="es. Pizzeria Roma"></div>
+        <div class="field"><label for="cId">Codice link (non modificabile dopo)</label><input id="cId" type="text" value="${esc(c.id)}" ${ed.isNew ? "" : "disabled"} placeholder="pizzeria-roma"></div></div>
+      <div class="g2"><div class="field"><label for="cAddr">Indirizzo (come appare agli ospiti)</label><input id="cAddr" type="text" value="${esc(c.address || "")}" placeholder="Hauptstraße 1 · 70173 Stuttgart"></div>
         <div class="field"><label for="cCity">Città</label><input id="cCity" type="text" value="${esc(c.city || "")}"></div></div>
-      <div class="g2"><div class="field"><label for="cContact">Contatto (nome, telefono)</label><input id="cContact" type="text" value="${esc(c.contact || "")}"></div>
-        <div class="field"><label for="cStatus">Stato</label><select id="cStatus">${Object.entries(STATUS).map(([k, l]) => `<option value="${k}" ${c.status === k ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
+      <div class="g2"><div class="field"><label for="cPhone">Telefono del locale</label><input id="cPhone" type="tel" value="${esc(c.phone || "")}"></div>
+        <div class="field"><label for="cContact">Referente (nome, cellulare)</label><input id="cContact" type="text" value="${esc(c.contact || "")}"></div></div>
+      <div class="g2"><div class="field"><label for="cTag">Slogan (tedesco)</label><input id="cTag" type="text" value="${esc(IH.pickL(c.tagline))}" placeholder="Pizza &amp; Pasta seit 1990"></div>
+        <div class="field"><label for="cSub">Sottotitolo (tedesco)</label><input id="cSub" type="text" value="${esc(IH.pickL(c.subline))}" placeholder="Frisch aus dem Steinofen"></div></div>
+      <div class="field"><span class="lbl">Orari di apertura</span><div class="hours">${GIORNI.map(([d, l]) => { const h = c.hours[d]; return `<label><input type="checkbox" data-open="${d}" ${h ? "checked" : ""}> ${l}</label><input type="time" data-from="${d}" value="${h ? hm(h[0]) : "11:00"}" ${h ? "" : "disabled"}><span class="muted">–</span><input type="time" data-to="${d}" value="${h ? hm(h[1]) : "22:00"}" ${h ? "" : "disabled"}>`; }).join("")}</div></div>
+      <div class="field"><label for="cGoogle">Link recensioni Google (facoltativo)</label><input id="cGoogle" type="url" value="${esc(c.google_review_url || "")}" placeholder="https://search.google.com/local/writereview?placeid=…"></div>
+      <div class="field"><label for="cStatus">Stato</label><select id="cStatus">${Object.entries(STATUS).map(([k, l]) => `<option value="${k}" ${c.status === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <p class="err" id="cErr" hidden></p></div>
+      <div class="actions"><span class="sp"></span><button class="btn" type="button" id="cCancel">Annulla</button><button class="btn primary" type="button" id="cSave">${ed.isNew ? "Crea cliente →" : "Salva"}</button></div>`;
+    B.querySelectorAll("[data-file]").forEach(inp => {
+      const drop = inp.closest(".drop");
+      drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+      drop.ondragleave = () => drop.classList.remove("over");
+      drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) pickFile(inp.dataset.file, e.dataTransfer.files[0]); };
+      inp.onchange = () => inp.files[0] && pickFile(inp.dataset.file, inp.files[0]);
+    });
+    B.querySelectorAll("[data-open]").forEach(cb => cb.onchange = () => { const d = cb.dataset.open; B.querySelector(`[data-from="${d}"]`).disabled = B.querySelector(`[data-to="${d}"]`).disabled = !cb.checked; });
+    if (ed.isNew){ $("cName").oninput = () => { if (!$("cId").dataset.touched) $("cId").value = IH.slug($("cName").value); }; $("cId").oninput = () => { $("cId").dataset.touched = "1"; }; }
+    $("cCancel").onclick = closeDialog; $("cSave").onclick = saveClient;
+  }
+  else if (ed.tab === "contratto"){
+    const hist = ed.isNew ? "" : months(12).slice().reverse().filter(m => m >= c.started_at.slice(0, 7)).map(m => { const e = earn(c, m); return `<tr><td>${ymLabel(m)}</td><td>${e.a.orders}</td><td>${eur(e.a.revenue)}</td><td>${eur(e.a.online)}</td><td class="earn" style="font-size:15px">${eur(e.total)}</td><td>${paidFor(c.id, m) ? `<span class="paid">${eur(paidFor(c.id, m))}</span>` : "—"}</td></tr>`; }).join("");
+    B.innerHTML = `<div class="grid">
       <span class="lbl">Contratto · il tuo guadagno</span>
       <div class="g3"><div class="field"><label for="cFee">Canone €/mese</label><input id="cFee" type="number" step="1" min="0" value="${+c.monthly_fee}"></div>
         <div class="field"><label for="cPct">% sugli ordini online</label><input id="cPct" type="number" step="0.1" min="0" max="30" value="${+c.pct_online}"></div>
@@ -241,24 +337,225 @@ function editClient(c){
         <div class="field"><label for="cTrial">Prova gratuita fino al</label><input id="cTrial" type="date" value="${c.trial_until || ""}"></div></div>
       <label class="check"><input type="checkbox" id="cSetupPaid" ${c.setup_paid ? "checked" : ""}> Setup già pagato</label>
       <div class="field"><label for="cNotes">Note</label><textarea id="cNotes" rows="2">${esc(c.notes || "")}</textarea></div>
-      ${isNew ? `<div class="hint2">Il cliente compare subito qui. Per dargli le sue app (menù, cassa, cucina…) serve ancora il passaggio “più locali”: dimmelo quando hai firmato con il secondo cliente.</div>` : ""}
       ${hist ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Mese</th><th>Ordini</th><th>Fatturato</th><th>Online</th><th>Guadagno</th><th>Incassato</th></tr></thead><tbody>${hist}</tbody></table></div>` : ""}
-      <p class="err" id="cErr" hidden></p>
-    </div>
-    <div class="actions"><span class="sp"></span><button class="btn" type="button" id="cCancel">Annulla</button><button class="btn primary" type="button" id="cSave">Salva</button></div>`);
-  $("dX").onclick = closeDialog; $("cCancel").onclick = closeDialog;
-  $("cSave").onclick = async () => {
-    const name = $("cName").value.trim();
-    if (!name){ $("cErr").textContent = "Inserisci il nome dell'attività."; $("cErr").hidden = false; return; }
-    const row = { name, city: $("cCity").value.trim() || null, contact: $("cContact").value.trim() || null, status: $("cStatus").value,
-      monthly_fee: +$("cFee").value || 0, pct_online: +$("cPct").value || 0, fee_per_order: +$("cPer").value || 0, setup_fee: +$("cSetup").value || 0,
-      started_at: $("cStart").value || IH.berlinToday(), trial_until: $("cTrial").value || null, setup_paid: $("cSetupPaid").checked, notes: $("cNotes").value.trim() || null };
-    if (isNew) row.id = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "cliente-" + Date.now();
-    const { error } = isNew ? await sb.from("clients").insert(row) : await sb.from("clients").update(row).eq("id", c.id);
-    if (error){ $("cErr").textContent = error.message; $("cErr").hidden = false; return; }
-    closeDialog(); IH.toast(isNew ? "Cliente aggiunto" : "Salvato"); await load(false);
-  };
+      <p class="err" id="cErr" hidden></p></div>
+      <div class="actions"><span class="sp"></span><button class="btn" type="button" id="cCancel">Annulla</button><button class="btn primary" type="button" id="cSave">${ed.isNew ? "Crea cliente →" : "Salva"}</button></div>`;
+    $("cCancel").onclick = closeDialog; $("cSave").onclick = saveClient;
+  }
+  else if (ed.tab === "menu") paintMenuTab();
+  else paintAppTab();
 }
+function captureEditor(){
+  const c = ed.c, v = id => $(id) ? $(id).value.trim() : null;
+  if ($("cName")){
+    c.name = v("cName"); if (ed.isNew) c.id = IH.slug(v("cId") || c.name);
+    c.address = v("cAddr") || null; c.city = v("cCity") || null; c.phone = v("cPhone") || null; c.contact = v("cContact") || null;
+    const tag = v("cTag"), sub = v("cSub");
+    c.tagline = tag ? { ...(c.tagline && typeof c.tagline === "object" && c.tagline.de === tag ? c.tagline : {}), de: tag } : null;
+    c.subline = sub ? { ...(c.subline && typeof c.subline === "object" && c.subline.de === sub ? c.subline : {}), de: sub } : null;
+    c.google_review_url = v("cGoogle") || null; c.status = $("cStatus").value;
+    const h = {};
+    document.querySelectorAll("[data-open]").forEach(cb => { const d = cb.dataset.open; if (!cb.checked) return; const a = toH($(`eBody`).querySelector(`[data-from="${d}"]`).value), b = toH($(`eBody`).querySelector(`[data-to="${d}"]`).value); if (a != null && b != null && b > a) h[d] = [a, b]; });
+    c.hours = h;
+  }
+  if ($("cFee")){
+    c.monthly_fee = +$("cFee").value || 0; c.pct_online = +$("cPct").value || 0; c.fee_per_order = +$("cPer").value || 0; c.setup_fee = +$("cSetup").value || 0;
+    c.started_at = $("cStart").value || IH.berlinToday(); c.trial_until = $("cTrial").value || null; c.setup_paid = $("cSetupPaid").checked; c.notes = v("cNotes") || null;
+  }
+}
+
+/* ---------- images: logo, cover, square app icon ---------- */
+function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function canvasBlob(cv, type, q){ return new Promise(r => cv.toBlob(r, type, q)); }
+async function scaled(img, maxW, maxH, type, q){
+  const k = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight), cv = document.createElement("canvas");
+  cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  return { blob: await canvasBlob(cv, type, q), cv };
+}
+// square icon for the home screen: logo centred on its own background colour (top-left pixel), dark if transparent
+async function squareIcon(img){
+  const S = 512, cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const g = cv.getContext("2d"), probe = document.createElement("canvas"); probe.width = probe.height = 1;
+  const pg = probe.getContext("2d"); pg.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1);
+  const [r, gg, b, a] = pg.getImageData(0, 0, 1, 1).data;
+  g.fillStyle = a > 200 ? `rgb(${r},${gg},${b})` : "#141110"; g.fillRect(0, 0, S, S);
+  const k = Math.min(S * .8 / img.naturalWidth, S * .8 / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k;
+  g.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+  return canvasBlob(cv, "image/png");
+}
+async function pickFile(kind, file){
+  if (!/^image\//.test(file.type)) return IH.toast("Serve un'immagine (JPG, PNG o WebP)", "err");
+  captureEditor();
+  const url = URL.createObjectURL(file), img = await loadImg(url);
+  if (kind === "logo"){
+    const isPng = file.type === "image/png" || file.type === "image/webp";
+    ed.files.logo = (await scaled(img, 1200, 800, isPng ? "image/png" : "image/jpeg", .9)).blob;
+    ed.files.icon = await squareIcon(img);
+  } else ed.files.cover = (await scaled(img, 1400, 1000, "image/jpeg", .86)).blob;
+  ed.prev[kind] = url;
+  paintEditor();
+}
+async function upload(cid, name, blob){
+  const ext = blob.type === "image/png" ? "png" : "jpg", path = `${cid}/${name}-${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from("brand").upload(path, blob, { contentType: blob.type, upsert: true, cacheControl: "31536000" });
+  if (error) throw error;
+  return sb.storage.from("brand").getPublicUrl(path).data.publicUrl;
+}
+
+async function saveClient(){
+  captureEditor();
+  const c = ed.c, fail = m => { const e = $("cErr"); if (e){ e.textContent = m; e.hidden = false; } else IH.toast(m, "err"); };
+  if (!c.name) { ed.tab = "locale"; paintEditor(); return fail("Inserisci il nome dell'attività."); }
+  if (!c.id || c.id.length < 3) { ed.tab = "locale"; paintEditor(); return fail("Codice link troppo corto (min. 3 lettere)."); }
+  if (ed.isNew && clients.some(x => x.id === c.id)) { ed.tab = "locale"; paintEditor(); return fail("Questo codice link esiste già. Scegline un altro."); }
+  const btn = $("cSave"); if (btn){ btn.disabled = true; btn.textContent = "Salvataggio …"; }
+  try {
+    if (ed.files.logo) c.logo_url = await upload(c.id, "logo", ed.files.logo);
+    if (ed.files.icon) c.icon_url = await upload(c.id, "icon", ed.files.icon);
+    if (ed.files.cover) c.cover_url = await upload(c.id, "cover", ed.files.cover);
+  } catch (e) { if (btn){ btn.disabled = false; btn.textContent = "Riprova"; } return fail("Caricamento immagine non riuscito: " + e.message); }
+  ed.files = {};
+  const row = { name: c.name, city: c.city, contact: c.contact, status: c.status, monthly_fee: c.monthly_fee, pct_online: c.pct_online, fee_per_order: c.fee_per_order,
+    setup_fee: c.setup_fee, started_at: c.started_at, trial_until: c.trial_until, setup_paid: c.setup_paid, notes: c.notes,
+    logo_url: c.logo_url || null, cover_url: c.cover_url || null, icon_url: c.icon_url || null, address: c.address, phone: c.phone,
+    tagline: c.tagline, subline: c.subline, hours: c.hours, google_review_url: c.google_review_url };
+  const { error } = ed.isNew ? await sb.from("clients").insert({ ...row, id: c.id }) : await sb.from("clients").update(row).eq("id", c.id);
+  if (error){ if (btn){ btn.disabled = false; btn.textContent = "Riprova"; } return fail(error.message); }
+  IH.store.del("ih-brand:" + c.id);
+  const wasNew = ed.isNew;
+  await load(false);
+  ed.isNew = false;
+  ed.c = { ...(clients.find(x => x.id === c.id) || c) };
+  $("eTitle").textContent = ed.c.name;
+  if (wasNew){ IH.burst(innerWidth / 2, 120); IH.toast(`${c.name} creato · ora il menù`); ed.tab = "menu"; }
+  else IH.toast("Salvato");
+  paintEditor();
+}
+
+/* ---------- step 2: menu from the flyer ---------- */
+async function paintMenuTab(){
+  const c = ed.c, B = $("eBody");
+  B.innerHTML = `<div class="grid">
+    <p class="muted" style="margin:0" id="mCount">Menù attuale: …</p>
+    <div class="field"><span class="lbl">Importa dal volantino</span>
+      <label class="drop" id="dFly"><span>Foto del volantino / menù con i prezzi<br><b>fino a 4 immagini</b> (fronte e retro)</span><input type="file" accept="image/*" multiple id="flyIn"></label></div>
+    <div id="flyOut"></div>
+    <div class="hint2">In alternativa: inserisci o correggi i piatti a mano nella Dashboard del cliente → Speisekarte (puoi creare anche le categorie).</div></div>
+    <div class="actions"><a class="btn" href="${esc(appUrl("dashboard", c.id))}#karte" target="_blank" rel="noopener">Apri menù nella Dashboard ↗</a><span class="sp"></span><button class="btn primary" type="button" id="toApp">Avanti: app e accesso →</button></div>`;
+  $("toApp").onclick = () => { ed.tab = "app"; paintEditor(); };
+  const fly = $("dFly");
+  fly.ondragover = e => { e.preventDefault(); fly.classList.add("over"); };
+  fly.ondragleave = () => fly.classList.remove("over");
+  fly.ondrop = e => { e.preventDefault(); fly.classList.remove("over"); readFlyer([...e.dataTransfer.files]); };
+  $("flyIn").onchange = () => readFlyer([...$("flyIn").files]);
+  const [k, i] = await Promise.all([sb.from("categories").select("id", { count: "exact", head: true }).eq("client_id", c.id), sb.from("menu_items").select("id", { count: "exact", head: true }).eq("client_id", c.id)]);
+  ed.menuCount = { cats: k.count || 0, items: i.count || 0 };
+  if ($("mCount")) $("mCount").innerHTML = ed.menuCount.items ? `Menù attuale: <b>${ed.menuCount.items}</b> piatti in <b>${ed.menuCount.cats}</b> categorie.` : `Il menù è ancora vuoto.`;
+  if (ed.flyer) paintFlyer();
+}
+async function readFlyer(files){
+  files = files.filter(f => /^image\//.test(f.type)).slice(0, 4);
+  if (!files.length) return IH.toast("Serve una foto (JPG/PNG). Un PDF: fai uno screenshot della pagina.", "err");
+  const out = $("flyOut");
+  out.innerHTML = `<div class="ok2">Leggo il volantino e traduco in 5 lingue … (circa 30–60 secondi)</div>`;
+  try {
+    const images = [];
+    for (const f of files){
+      const u = URL.createObjectURL(f), img = await loadImg(u);
+      const { cv } = await scaled(img, 1800, 1800, "image/jpeg", .85);
+      images.push({ media_type: "image/jpeg", data: cv.toDataURL("image/jpeg", .85).split(",")[1] });
+    }
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(FN("menu-from-flyer"), { method: "POST", headers: { "Content-Type": "application/json", apikey: IH_CONFIG.key, Authorization: "Bearer " + session.access_token }, body: JSON.stringify({ images }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ("Errore " + r.status));
+    ed.flyer = d.menu; ed.flyerCut = d.truncated;
+    paintFlyer();
+  } catch (e) {
+    out.innerHTML = `<div class="hint2"><b>Import automatico non riuscito.</b> ${esc(e.message)}<br>Se manca la chiave: Supabase → Edge Functions → Secrets → <code>ANTHROPIC_API_KEY</code>. Oppure mandami il volantino in chat e lo inserisco io.</div>`;
+  }
+}
+function paintFlyer(){
+  const m = ed.flyer, cats = (m && m.categories) || [], n = cats.reduce((s, k) => s + k.items.length, 0);
+  const price = it => [it.price_pickup, it.price_delivery].filter(v => v != null).map(v => eur(v)).join(" / ") || "—";
+  const extra = [m.tagline && "slogan", m.hours && Object.keys(m.hours).length && "orari", m.phone && "telefono", m.address && "indirizzo"].filter(Boolean);
+  $("flyOut").innerHTML = `<div class="grid">
+    <div class="ok2">Trovati <b>${n}</b> piatti in <b>${cats.length}</b> categorie, con traduzioni EN · IT · TR · FR.${ed.flyerCut ? " Il volantino è molto lungo: controlla che ci sia tutto." : ""} Controlla i prezzi prima di importare.</div>
+    <div class="mprev">${cats.map(k => `<h4>${esc(k.names.de)}${k.is_drink ? " · bevande" : ""}</h4>${k.items.map(it => `<div><span>${esc(it.names.de)}${it.tag === "veg" ? " 🌱" : ""}</span><span>${price(it)}</span></div>`).join("")}`).join("")}</div>
+    ${ed.menuCount && ed.menuCount.items ? `<label class="check"><input type="checkbox" id="fReplace" checked> Sostituisci il menù attuale (${ed.menuCount.items} piatti)</label>` : ""}
+    ${extra.length ? `<label class="check"><input type="checkbox" id="fExtra" checked> Usa anche ${extra.join(", ")} dal volantino (solo dove vuoto)</label>` : ""}
+    <div class="actions" style="margin:0"><button class="btn" type="button" id="fDrop">Scarta</button><span class="sp"></span><button class="btn primary" type="button" id="fImp">Importa ${n} piatti</button></div></div>`;
+  $("fDrop").onclick = () => { ed.flyer = null; $("flyOut").innerHTML = ""; };
+  $("fImp").onclick = importFlyer;
+}
+async function importFlyer(){
+  const c = ed.c, m = ed.flyer, btn = $("fImp"); btn.disabled = true; btn.textContent = "Importo …";
+  const fail = msg => { btn.disabled = false; btn.textContent = "Riprova"; IH.toast(msg, "err"); };
+  if ($("fReplace") && $("fReplace").checked){
+    const a = await sb.from("menu_items").delete().eq("client_id", c.id);
+    if (a.error) return fail(a.error.message);
+    const b = await sb.from("categories").delete().eq("client_id", c.id);
+    if (b.error) return fail(b.error.message);
+  }
+  const { data: have } = await sb.from("categories").select("id,sort").eq("client_id", c.id);
+  const used = new Set((have || []).map(x => x.id));
+  let sort = Math.max(-1, ...(have || []).map(x => x.sort || 0)) + 1;
+  const catRows = [], itemRows = [];
+  for (const k of m.categories){
+    let id = `${c.id}-${IH.slug(k.names.de) || "kat"}`, n = 2;
+    while (used.has(id)) id = `${c.id}-${IH.slug(k.names.de) || "kat"}-${n++}`;
+    used.add(id);
+    catRows.push({ id, client_id: c.id, sort: sort++, names: k.names, is_drink: !!k.is_drink });
+    k.items.forEach((it, j) => itemRows.push({ client_id: c.id, category_id: id, sort: j, names: it.names, descs: it.descs || null,
+      price_pickup: it.price_pickup ?? null, price_delivery: it.price_delivery ?? null, tag: ["veg", "house"].includes(it.tag) ? it.tag : null, available: true }));
+  }
+  let r = await sb.from("categories").insert(catRows);
+  if (r.error) return fail(r.error.message);
+  r = await sb.from("menu_items").insert(itemRows);
+  if (r.error) return fail(r.error.message);
+  if ($("fExtra") && $("fExtra").checked){
+    const p = {};
+    if (m.tagline && !IH.pickL(c.tagline)) p.tagline = m.tagline;
+    if (m.hours && Object.keys(m.hours).length && !Object.keys(c.hours || {}).length) p.hours = m.hours;
+    if (m.phone && !c.phone) p.phone = m.phone;
+    if (m.address && !c.address) p.address = m.address;
+    if (Object.keys(p).length){ await sb.from("clients").update(p).eq("id", c.id); Object.assign(c, p); IH.store.del("ih-brand:" + c.id); }
+  }
+  IH.sound.paid(); IH.burst(innerWidth / 2, 160);
+  IH.toast(`${itemRows.length} piatti importati`);
+  ed.flyer = null; await load(false);
+  paintMenuTab();
+}
+
+/* ---------- step 4: links, QR, owner login ---------- */
+async function paintAppTab(){
+  const c = ed.c, B = $("eBody"), guest = appUrl("kunde", c.id);
+  B.innerHTML = `<div class="grid">
+    <div class="qrbox"><div class="q" id="qGuest"></div><div style="flex:1;min-width:200px"><b class="lbl">QR per gli ospiti</b><p class="muted" style="margin:6px 0 10px">Menù di ${esc(c.name)} con il suo logo. I QR per ogni tavolo li stampa il titolare dalla sua Dashboard → QR-Codes.</p>
+      <a class="btn primary" href="${esc(guest)}" target="_blank" rel="noopener">Prova come ospite ↗</a></div></div>
+    <div>${APPS.map(([k, n, d]) => { const u = appUrl(k, c.id); return `<div class="linkrow"><b>${n}</b><code title="${esc(d)}">${esc(u)}</code><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Apri</a><button class="btn" type="button" data-copy="${esc(u)}">Copia</button></div>`; }).join("")}</div>
+    <div class="field"><span class="lbl">Accesso del titolare</span>
+      <p class="muted" style="margin:0 0 6px;font-size:14px">1) Il titolare apre la Dashboard, tocca „Konto erstellen“ e conferma l'e-mail. 2) Tu inserisci qui la sua e-mail. Poi abilita lui stesso i dipendenti (Dashboard → Team).</p>
+      <div class="g2" style="align-items:end"><input id="oMail" type="email" placeholder="titolare@esempio.de"><button class="btn primary" type="button" id="oAdd">Abilita come titolare</button></div></div>
+    <div id="oList" class="muted" style="font-size:14px"></div>
+    <div class="actions"><span class="sp"></span><button class="btn primary" type="button" id="eDone">Fatto</button></div></div>`;
+  try { new QRCode($("qGuest"), { text: guest, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M }); } catch (e) {}
+  B.querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); IH.toast("Link copiato"); } catch (e) { IH.toast(b.dataset.copy); } });
+  $("eDone").onclick = closeDialog;
+  $("oAdd").onclick = async () => {
+    const mail = $("oMail").value.trim(); if (!mail) return;
+    const { error } = await sb.rpc("add_staff", { p_email: mail, p_admin: true, p_client: c.id });
+    if (error) return IH.toast(error.message, "err");
+    IH.sound.paid(); IH.toast(`${mail} è titolare di ${c.name}`); $("oMail").value = ""; loadOwners();
+  };
+  loadOwners();
+}
+async function loadOwners(){
+  const { data } = await sb.from("staff").select("email,is_admin").eq("client_id", ed.c.id).order("created_at");
+  if ($("oList")) $("oList").innerHTML = data && data.length ? "Accessi: " + data.map(s => `${esc(s.email)}${s.is_admin ? " (admin)" : ""}`).join(" · ") : "Nessun accesso ancora.";
+}
+
 function exportCsv(){
   const head = ["Cliente","Stato","Mese","Ordini","Fatturato","Online","Contanti","Carta","Consegne","Canone","Provvigioni","Setup","Guadagno totale","Incassato"];
   const lines = [head.join(";")].concat(clients.map(c => { const e = earn(c, ym), a = e.a; return [c.name, STATUS[c.status], ym, a.orders, a.revenue, a.online, a.cash, a.card, a.deliveries, e.fee, e.prov, e.setup, e.total, paidFor(c.id, ym)].map(v => typeof v === "number" ? String(Math.round(v * 100) / 100).replace(".", ",") : `"${String(v).replace(/"/g, '""')}"`).join(";"); }));

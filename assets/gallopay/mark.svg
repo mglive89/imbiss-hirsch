@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>GallopaySystem</title>
+  <g transform="translate(-10 4)">
+  <g fill="#E5392E">
+    <circle cx="47" cy="35" r="9.5"/><circle cx="62" cy="25" r="12"/><circle cx="78" cy="31" r="9.5"/>
+    <path d="M38 40 Q60 30 86 38 L84 48 L40 48 Z"/>
+  </g>
+  <path d="M90.2 55.6 A32 32 0 1 0 96 74 H73" fill="none" stroke="#F4EFE6" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M99 55 L118 63.5 L99 71 Z" fill="#F2B33D" stroke="#F2B33D" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M104 76 C112 80 113 92 106 96 C99 99 97 86 104 76 Z" fill="#E5392E"/>
+  <circle cx="78" cy="61" r="4.2" fill="#F4EFE6"/>
+</g>
+</svg>

@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 // Supabase connection (public key – safe to ship; data is protected by row-level security)
 window.IH_CONFIG = {
   url: "https://trwvzjgkygoggnomfovi.supabase.co",

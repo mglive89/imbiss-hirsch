@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 /* =====================================================================
    Imbiss – shared core for all apps
    helpers · Supabase client · sounds · zoom lock · motion · layers
@@ -5,6 +6,7 @@
 (function () {
   "use strict";
   const IH = (window.IH = {});
+  IH.PLATFORM = "GallopaySystem";   // owner reference, never shown to guests or staff
   const mm = (q) => (window.matchMedia ? matchMedia(q).matches : false);
 
   IH.reduced = mm("(prefers-reduced-motion: reduce)");
@@ -46,6 +48,61 @@
   IH.PAY = { offen: "Offen", bar: "Bar bezahlt", karte: "Karte bezahlt", bei_lieferung: "Offen · bei Lieferung", online: "Online bezahlt" };
   IH.PM = { card: "Karte", paypal: "PayPal", apple_pay: "Apple Pay", google_pay: "Google Pay" };
   IH.where = (o) => (o.channel === "tisch" ? `Tisch ${IH.esc(o.table_no)}` : o.channel === "abholung" ? "Abholung" : "Lieferung");
+
+  /* ---------- GallopaySystem: one installation, many restaurants ----------
+     Guest apps (Kunde, Abholung) read the restaurant from ?l=<id>.
+     Staff apps take it from the login (staff.client_id); the platform owner may switch with ?l=<id>.
+     Without ?l everything behaves exactly like before (Imbiss Hirsch). */
+  const DEF = (IH.DEFAULT_CLIENT = "hirsch");
+  IH.slug = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 32);
+  IH.urlClient = () => { try { return IH.slug(new URLSearchParams(location.search).get("l") || ""); } catch (e) { return ""; } };
+  IH.CID = IH.urlClient() || DEF;
+  IH.key = (k, cid = IH.CID) => (cid === DEF ? k : k + ":" + cid);             // per-restaurant storage key
+  IH.withL = (url, cid = IH.CID) => (cid === DEF ? url : url + (url.includes("?") ? "&" : "?") + "l=" + encodeURIComponent(cid));
+  IH.BRAND_DEFAULT = { id: DEF, name: "Imbiss Hirsch", logo_url: "../assets/logo.jpg", cover_url: "../assets/cover.jpg", icon_url: null,
+    address: "Ringstraße 27 · 74321 Bietigheim-Bissingen", phone: "07142 – 6 44 39", tagline: { de: "Tantuni & Burger" }, subline: null,
+    hours: { 1: [11, 19], 2: [11, 19], 3: [11, 19], 4: [11, 19], 5: [11, 19], 6: [11, 16] }, google_review_url: null };
+  IH.brandCached = (cid = IH.CID) => {
+    try { const b = JSON.parse(IH.store.get("ih-brand:" + cid) || "null"); if (b) return b; } catch (e) {}
+    return cid === DEF ? IH.BRAND_DEFAULT : null;
+  };
+  IH.brand = async (sb, cid = IH.CID) => {
+    try {
+      const { data, error } = await sb.rpc("get_client", { p_id: cid });
+      if (!error && data) { IH.store.set("ih-brand:" + cid, JSON.stringify(data)); return data; }
+    } catch (e) {}
+    return IH.brandCached(cid);
+  };
+  IH.abs = (u) => { try { return new URL(u, location.href).href; } catch (e) { return u; } };
+  const setLink = (rel, href) => {
+    let l = document.querySelector(`link[rel="${rel}"]`);
+    if (!l) { l = document.createElement("link"); l.rel = rel; document.head.appendChild(l); }
+    l.href = href;
+  };
+  // logo, title, home-screen name and icon of the restaurant; app = "Kasse" etc. (empty for the guest app)
+  IH.applyBrand = (b, { app = "", color = "#0d0c0b" } = {}) => {
+    if (!b) return;
+    const logo = b.logo_url || IH.BRAND_DEFAULT.logo_url;
+    document.querySelectorAll("img[data-brand-logo]").forEach((img) => {
+      if (img.getAttribute("src") !== logo) { img.removeAttribute("width"); img.removeAttribute("height"); img.src = logo; }
+      img.alt = b.name || "";
+    });
+    document.querySelectorAll("[data-brand-name]").forEach((el) => (el.textContent = b.name || ""));
+    if (b.id === DEF) return;                                       // Hirsch keeps its static manifest and icons
+    document.title = app ? `${app} · ${b.name}` : b.name;
+    const m = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (m) m.content = app || b.name;
+    const icon = b.icon_url || logo;
+    setLink("apple-touch-icon", icon); setLink("icon", icon);
+    // own installable app per restaurant: manifest built on the fly, start URL keeps ?l=
+    const start = IH.abs(IH.withL(location.pathname, b.id));
+    const man = { name: app ? `${b.name} · ${app}` : b.name, short_name: app || b.name, start_url: start, scope: IH.abs("./"), id: start,
+      display: "standalone", background_color: color, theme_color: color,
+      icons: [{ src: IH.abs(icon), sizes: "512x512", type: "image/png", purpose: "any" }, { src: IH.abs(icon), sizes: "192x192", type: "image/png", purpose: "any" }] };
+    setLink("manifest", "data:application/manifest+json," + encodeURIComponent(JSON.stringify(man)));
+  };
+  IH.pickL = (obj, lang = "de") => (obj ? (typeof obj === "string" ? obj : obj[lang] || obj.de || "") : "");
 
   /* ---------- app feel: no zoom (also iOS), no image long-press ---------- */
   const stop = (e) => e.preventDefault();

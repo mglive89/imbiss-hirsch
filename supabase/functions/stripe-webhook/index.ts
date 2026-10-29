@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 // Stripe tells us a payment went through -> order is marked paid and appears in the kitchen.
 import Stripe from "npm:stripe@14.25.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";

@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de" class="shell">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Küche</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -71,7 +73,7 @@ body{font-size:18px}
 
 <div id="app" hidden>
   <header class="appbar">
-    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Küche</b></a>
+    <a class="brand" href="./"><img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Küche</b></a>
     <span class="conn" id="conn" title="Live-Verbindung"></span>
     <span class="count">In Arbeit <b id="cntQ">0</b></span>
     <span class="count">Fertig <b id="cntR">0</b></span>
@@ -93,7 +95,7 @@ body{font-size:18px}
 
 <div class="starter" id="starter" hidden>
   <div>
-    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
     <p class="appname">Küche</p>
     <p>Antippen: Ton für neue Bestellungen an, Vollbild, Bildschirm bleibt an.</p>
     <button class="btn big primary" type="button" id="startBtn">Küche starten</button>
@@ -106,14 +108,14 @@ body{font-size:18px}
 <script src="../shared/staff.js"></script>
 <script>
 const { $, esc, minsAgo } = IH;
-let sb, orders = [], seen = new Set(), first = true;
+let sb, orders = [], seen = new Set(), first = true, CID = IH.CID;
 const TARGET = 15; // minutes until an order counts as late
 
 const where = o => o.channel === "tisch" ? `Tisch ${esc(o.table_no)}` : o.channel === "abholung" ? `Abholung${o.customer_name ? " · " + esc(o.customer_name) : ""}` : "Lieferung";
 
-IH.splash("../assets/logo.jpg", "Küche");
+IH.splash((IH.brandCached(IH.store.get("ih-last-client") || IH.CID) || IH.BRAND_DEFAULT).logo_url || "../assets/logo.jpg", "Küche");
 IH.staffGate({ app: "Küche", onReady: async (ctx) => {
-  sb = ctx.sb;
+  sb = ctx.sb; CID = ctx.client;
   if (!IH.sound.on) $("starter").hidden = false;
   IH.clock($("clock"));
   await load(); subscribe(); IH.keepAwake();
@@ -121,7 +123,7 @@ IH.staffGate({ app: "Küche", onReady: async (ctx) => {
 
 /* ---------- data: only paid orders ---------- */
 async function load(){
-  const { data, error } = await sb.from("orders").select("*, order_items(*)")
+  const { data, error } = await sb.from("orders").select("*, order_items(*)").eq("client_id", CID)
     .neq("payment", "offen").in("status", ["neu","zubereitung","fertig"])
     .order("paid_at", { ascending: true }).limit(200);
   $("conn").classList.toggle("off", !!error);
@@ -135,7 +137,7 @@ async function load(){
 let reloadT;
 function subscribe(){
   sb.channel("kitchen")
-    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `client_id=eq.${CID}` }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
   setInterval(load, 20000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });

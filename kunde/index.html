@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Hirsch</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -212,13 +214,13 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 
 <div class="wrap">
   <header class="hero" id="home">
-    <h1 class="sr">Imbiss Hirsch – seit 1975</h1>
-    <span class="coverwrap"><img class="cover" src="../assets/cover.jpg" width="910" height="550" alt="Imbiss Hirsch seit 1975 – Smash Burger"></span>
+    <h1 class="sr" id="hName">Imbiss Hirsch – seit 1975</h1>
+    <span class="coverwrap"><img class="cover" id="cover" src="../assets/cover.jpg" width="910" height="550" alt="Imbiss Hirsch seit 1975 – Smash Burger"></span>
     <div id="tableBadge" class="tablebadge" hidden></div>
     <ul class="feats">
       <li>
         <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="17"/><circle cx="32" cy="32" r="11"/><path d="M8 10v14a4 4 0 0 0 4 4v26M12 10v14M16 10v14a4 4 0 0 1-4 4"/><path d="M54 54V10c-4 2-6 10-6 18 0 4 2 6 6 6"/></svg>
-        <div><b id="fWhere"></b><span>Ringstraße 27 · 74321 Bietigheim-Bissingen</span></div>
+        <div><b id="fWhere"></b><span id="fAddr">Ringstraße 27 · 74321 Bietigheim-Bissingen</span></div>
       </li>
       <li>
         <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 18h36l4 40H10z"/><path d="M14 18l4-10h28l4 10"/><path d="M26 30l-3-5M23 25l-3 1M26 30l-1-6M38 30l3-5M41 25l3 1M38 30l1-6M27 31h10l-1 5-4 10-4-10z"/></svg>
@@ -226,10 +228,10 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
       </li>
       <li>
         <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6l5 4 6-1 2 6 6 2-1 6 4 5-4 5 1 6-6 2-2 6-6-1-5 4-5-4-6 1-2-6-6-2 1-6-4-5 4-5-1-6 6-2 2-6 6 1z"/><path d="M24 32l6 6 11-12"/><path d="M20 46l-6 14 8-3 4 7 5-12M44 46l6 14-8-3-4 7-5-12"/></svg>
-        <div><b>Tantuni &amp; Burger</b><span id="fFresh"></span></div>
+        <div><b id="fTag">Tantuni &amp; Burger</b><span id="fFresh"></span></div>
       </li>
     </ul>
-    <div class="hoursbox"><span id="hbLbl"></span><span><span id="hbMf"></span>&nbsp; 11:00 – 19:00</span><span><span id="hbSat"></span>&nbsp; 11:00 – 16:00</span></div>
+    <div class="hoursbox" id="hoursbox"></div>
     <div class="status" id="status"><i aria-hidden="true"></i><span id="statusTx"></span></div>
     <div class="ctas">
       <button type="button" class="btn big primary" id="ctaMenu"></button>
@@ -252,7 +254,7 @@ footer{padding-block:20px 20px;font-size:13px;color:var(--faint)}
 <div class="wrap">
   <div id="offline" class="offline" hidden></div>
   <main id="menu"></main>
-  <footer>Imbiss Hirsch · Ringstraße 27 · 74321 Bietigheim-Bissingen</footer>
+  <footer id="foot">Imbiss Hirsch · Ringstraße 27 · 74321 Bietigheim-Bissingen</footer>
 </div>
 
 <button type="button" class="pill track" id="trackBtn" hidden></button>
@@ -298,7 +300,7 @@ const T = {
   monfriL: ["Montag – Freitag","Monday – Friday","Lunedì – Venerdì","Pazartesi – Cuma","Lundi – Vendredi"],
   sat:     ["Samstag","Saturday","Sabato","Cumartesi","Samedi"],
   openNow: ["Jetzt geöffnet · bis {t} Uhr","Open now · until {t}","Aperto ora · fino alle {t}","Şu an açık · {t}'e kadar","Ouvert · jusqu'à {t}"],
-  closedNow:["Geschlossen · öffnet {d} um 11:00","Closed · opens {d} at 11:00","Chiuso · apre {d} alle 11:00","Kapalı · {d} 11:00'de açılır","Fermé · ouvre {d} à 11:00"],
+  closedNow:["Geschlossen · öffnet {d} um {o}","Closed · opens {d} at {o}","Chiuso · apre {d} alle {o}","Kapalı · {d} {o}'de açılır","Fermé · ouvre {d} à {o}"],
   today:   ["heute","today","oggi","bugün","aujourd'hui"],
   tomorrow:["morgen","tomorrow","domani","yarın","demain"],
   ctaMenu: ["Speisekarte & Bestellen","Menu & order","Menù e ordina","Menü ve sipariş","Carte & commande"],
@@ -400,11 +402,17 @@ const T = {
 };
 
 /* ---------- state ---------- */
+// GallopaySystem: the restaurant comes from ?l= (no ?l = Imbiss Hirsch, so old QR codes keep working)
+const CID = IH.CID, IS_DEF = CID === IH.DEFAULT_CLIENT;
+let BR = IH.brandCached() || {id: CID, name: "", logo_url: null, cover_url: null, hours: {}, tagline: null, subline: null, address: "", phone: ""};
+const NS = new Set(["ih-cart","ih-last-order","ih-menu-cache","ih-deliv"]);   // kept apart per restaurant
+const nk = k => NS.has(k) ? IH.key(k) : k;
 const store = {
-  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
-  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} },
-  del(k){ try{ localStorage.removeItem(k) }catch(e){} }
+  get(k){ try{ return localStorage.getItem(nk(k)) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(nk(k),v) }catch(e){} },
+  del(k){ try{ localStorage.removeItem(nk(k)) }catch(e){} }
 };
+const withL = u => IH.withL(u);
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let lang = "de";
@@ -416,21 +424,21 @@ const pick = (obj) => obj ? (obj[lang] || obj.de || "") : "";
 // table from QR code: ?tisch=5
 const params = new URLSearchParams(location.search);
 let tableNo = (params.get("tisch") || "").replace(/[^0-9A-Za-z-]/g,"").slice(0,6);
-try { if (tableNo) sessionStorage.setItem("ih-table", tableNo); else tableNo = sessionStorage.getItem("ih-table") || ""; } catch(e){}
+try { const tk = IH.key("ih-table"); if (tableNo) sessionStorage.setItem(tk, tableNo); else tableNo = sessionStorage.getItem(tk) || ""; } catch(e){}
 
-let deliveryOn = IH.store.get("ih-deliv") !== "0";   // switched in the Dashboard, live
+let deliveryOn = store.get("ih-deliv") !== "0";   // switched in the Dashboard, live
 let otype = tableNo ? "tisch" : (store.get("ih-otype") === "lieferung" && deliveryOn ? "lieferung" : "abholung");
 const orderTypes = () => (tableNo ? ["tisch"] : []).concat(deliveryOn ? ["abholung","lieferung"] : ["abholung"]);
 async function loadSettings(){
   if (!sb) return;
   try{
-    const { data } = await sb.from("settings").select("key,value").eq("key", "delivery_enabled").maybeSingle();
+    const { data } = await sb.from("settings").select("key,value").eq("client_id", CID).eq("key", "delivery_enabled").maybeSingle();
     if (data) applyDelivery(data.value !== false);
   }catch(e){}
 }
 function applyDelivery(on){
   const changed = on !== deliveryOn;
-  deliveryOn = on; IH.store.set("ih-deliv", on ? "1" : "0");
+  deliveryOn = on; store.set("ih-deliv", on ? "1" : "0");
   if (!on && otype === "lieferung") otype = "abholung";
   if (changed){ renderChrome(); renderMenu(false); if (sheetMode === "cart") renderCart(); }
 }
@@ -450,8 +458,8 @@ async function loadMenu(){
   if (sb){
     try{
       const [c, i] = await Promise.all([
-        sb.from("categories").select("id,sort,names,is_drink").order("sort"),
-        sb.from("menu_items").select("id,category_id,sort,names,descs,price_pickup,price_delivery,tag,available").order("sort")
+        sb.from("categories").select("id,sort,names,is_drink").eq("client_id", CID).order("sort"),
+        sb.from("menu_items").select("id,category_id,sort,names,descs,price_pickup,price_delivery,tag,available").eq("client_id", CID).order("sort")
       ]);
       if (c.error || i.error) throw (c.error || i.error);
       cats = c.data.map(cat => ({id:cat.id, names:cat.names, is_drink:cat.is_drink,
@@ -463,8 +471,9 @@ async function loadMenu(){
     }catch(e){ console.warn("menu load failed", e); }
   }
   online = false;
-  try { cats = JSON.parse(store.get("ih-menu-cache") || "null") || window.IH_FALLBACK_MENU || []; }
-  catch(e){ cats = window.IH_FALLBACK_MENU || []; }
+  const fb = IS_DEF ? (window.IH_FALLBACK_MENU || []) : [];
+  try { cats = JSON.parse(store.get("ih-menu-cache") || "null") || fb; }
+  catch(e){ cats = fb; }
 }
 const allItems = () => cats.flatMap(c => c.items);
 const findItem = id => allItems().find(x => x.id === id);
@@ -478,10 +487,10 @@ function renderChrome(){
   $("fOrder").textContent = tr("orderAlt");
   $("fOrderTx").textContent = deliveryOn ? tr("orderTx2") : tr("delivOff");
   $("fOrder").closest("li").classList.toggle("off", !deliveryOn);
-  $("fFresh").textContent = tr("fresh");
-  $("hbLbl").textContent = tr("hours") + ":";
-  $("hbMf").textContent = tr("monfriL");
-  $("hbSat").textContent = tr("sat");
+  $("fFresh").textContent = IS_DEF ? tr("fresh") : pick(BR.subline);
+  $("fTag").textContent = pick(BR.tagline) || BR.name || "";
+  $("hoursbox").innerHTML = `<span>${esc(tr("hours"))}:</span>` + hourGroups().map(g => `<span>${esc(g.label)}&nbsp; ${esc(g.time)}</span>`).join("");
+  $("hoursbox").hidden = !hourGroups().length;
   $("ctaMenu").textContent = tr("ctaMenu");
   $("ctaInstall").textContent = tr("install");
   $("iosHint").textContent = tr("iosHint");
@@ -525,8 +534,8 @@ function renderMenu(animate){
   }
   html += `
   <div class="info">
-    <div><h3>${esc(tr("hours"))}</h3><p>${esc(tr("monfriL"))}: 11:00 – 19:00<br>${esc(tr("sat"))}: 11:00 – 16:00</p></div>
-    <div><h3>${esc(tr("orderAlt"))}</h3><p>${esc(tr("orderTx2"))}<br><strong style="font-family:var(--label);font-size:22px">${esc(IH_CONFIG.phone)}</strong></p></div>
+    ${hourGroups().length ? `<div><h3>${esc(tr("hours"))}</h3><p>${hourGroups().map(g => `${esc(g.label)}: ${esc(g.time)}`).join("<br>")}</p></div>` : ""}
+    ${BR.phone ? `<div><h3>${esc(tr("orderAlt"))}</h3><p>${esc(tr("orderTx2"))}<br><strong style="font-family:var(--label);font-size:22px">${esc(BR.phone)}</strong></p></div>` : ""}
   </div>
   <p class="note">${esc(tr("allerg"))}</p>`;
   $("menu").innerHTML = html;
@@ -634,7 +643,7 @@ async function submitOrder(){
   if (otype === "lieferung" && !form.address.trim()) return renderCart(tr("needAddr"));
   if (window.IHSound) IHSound.unlock();   // the tap lets us ring later when the food is ready
   const btn = $("sendBtn"); btn.disabled = true; btn.textContent = tr("sending");
-  const payload = {channel: otype, table_no: otype === "tisch" ? tableNo : null, lang,
+  const payload = {client: CID, channel: otype, table_no: otype === "tisch" ? tableNo : null, lang,
     name: otype === "tisch" ? null : form.name, phone: otype === "tisch" ? null : form.phone,
     address: otype === "lieferung" ? form.address : null, note: form.note,
     items: lines.map(l => ({id: l.it.id, qty: l.qty}))};
@@ -669,7 +678,7 @@ async function confirmPay(o){
   }catch(e){}
 }
 async function startCheckout(o){
-  const ret = location.origin + location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "");
+  const ret = location.origin + withL(location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : ""));
   try{
     const r = await fetch(fnUrl("create-checkout"), {method:"POST", headers:{"Content-Type":"application/json", apikey: IH_CONFIG.key},
       body: JSON.stringify({id: o.id, token: o.token, return_url: ret, lang})});
@@ -841,8 +850,8 @@ async function sendRating(){
   // Google link is offered to every guest, whatever the rating (Google's review rules)
   $("rateBox").innerHTML = `<h2 id="rateTitle">${esc(tr("rateThanks"))}</h2>
     <div class="stars">${[1,2,3,4,5].map(k => `<button type="button" tabindex="-1" class="${k <= rating ? "on pop" : ""}" style="--i:${k-1}" aria-hidden="true">${STAR}</button>`).join("")}</div>
-    ${IH_CONFIG.googleReview ? `<p>${esc(tr("rateGoogleAsk"))}</p>
-    <a class="btn big gbtn" id="gBtn" href="${esc(IH_CONFIG.googleReview)}" target="_blank" rel="noopener">${GLOGO}${esc(tr("rateGoogle"))}</a>` : ""}
+    ${reviewUrl() ? `<p>${esc(tr("rateGoogleAsk"))}</p>
+    <a class="btn big gbtn" id="gBtn" href="${esc(reviewUrl())}" target="_blank" rel="noopener">${GLOGO}${esc(tr("rateGoogle"))}</a>` : ""}
     <button type="button" class="link" id="rateDone">${esc(tr("rateDone"))}</button>`;
   if ($("gBtn")) $("gBtn").onclick = () => { sb.rpc("submit_feedback", {p_id: o.id, p_token: o.token, p_rating: rating, p_comment: null, p_lang: lang, p_google: true}); setTimeout(() => finishRating(true), 400); };
   $("rateDone").onclick = () => finishRating(true);
@@ -862,8 +871,35 @@ function renderTrack(o, st){
   b.onclick = () => showOrder(o);
 }
 
+/* ---------- restaurant branding ---------- */
+function applyBrand(){
+  IH.applyBrand(BR);
+  if (IS_DEF) return;                                   // Hirsch: static markup stays as it is
+  const img = $("cover"), src = BR.cover_url || BR.logo_url;
+  if (src && img.getAttribute("src") !== src){ img.removeAttribute("width"); img.removeAttribute("height"); img.src = src; }
+  img.hidden = !src; img.alt = BR.name || "";
+  $("hName").textContent = BR.name || "";
+  $("fAddr").textContent = BR.address || "";
+  const tel = $("telLink"); tel.textContent = BR.phone || ""; tel.href = "tel:" + String(BR.phone || "").replace(/[^0-9+]/g, ""); tel.hidden = !BR.phone;
+  $("foot").textContent = [BR.name, BR.address].filter(Boolean).join(" · ");
+  const md = document.querySelector('meta[name="description"]'); if (md) md.content = `Speisekarte und Bestellung – ${BR.name}`;
+}
+
 /* ---------- open / closed ---------- */
-const HOURS = {1:[11,19],2:[11,19],3:[11,19],4:[11,19],5:[11,19],6:[11,16]};
+let HOURS = BR.hours || {};
+const reviewUrl = () => BR.google_review_url || (IS_DEF ? IH_CONFIG.googleReview : "");
+const hm = h => { const m = Math.round((+h) * 60); return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+// "Montag – Freitag 11:00 – 19:00", consecutive days with the same hours in one line
+function hourGroups(){
+  const order = [1,2,3,4,5,6,0], out = [];
+  const wd = d => new Intl.DateTimeFormat(LOCALE[lang], {weekday:"long", timeZone:"UTC"}).format(new Date(Date.UTC(2024, 0, 7 + d)));
+  for (const d of order){
+    const h = HOURS[d]; if (!h) { out.push(null); continue; }
+    const time = `${hm(h[0])} – ${hm(h[1])}`, last = out[out.length - 1];
+    if (last && last.time === time) last.to = d; else out.push({from: d, to: d, time});
+  }
+  return out.filter(Boolean).map(g => ({time: g.time, label: g.from === g.to ? wd(g.from) : `${wd(g.from)} – ${wd(g.to)}`}));
+}
 function renderStatus(){
   let wd, mins;
   try{
@@ -871,11 +907,14 @@ function renderStatus(){
     wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(p.weekday); mins = (+p.hour)*60 + (+p.minute);
   }catch(e){ const d = new Date(); wd = d.getDay(); mins = d.getHours()*60 + d.getMinutes(); }
   const h = HOURS[wd], el = $("status");
-  if (h && mins >= h[0]*60 && mins < h[1]*60){ el.classList.remove("closed"); $("statusTx").textContent = tr("openNow",{t: h[1] + ":00"}); return; }
+  if (!Object.keys(HOURS).length){ el.hidden = true; return; }
+  el.hidden = false;
+  if (h && mins >= h[0]*60 && mins < h[1]*60){ el.classList.remove("closed"); $("statusTx").textContent = tr("openNow",{t: hm(h[1])}); return; }
   let k = (h && mins < h[0]*60) ? 0 : 1;
-  while (!HOURS[(wd + k) % 7]) k++;
+  while (!HOURS[(wd + k) % 7] && k < 8) k++;
+  const oh = HOURS[(wd + k) % 7];
   const d = k === 0 ? tr("today") : k === 1 ? tr("tomorrow") : new Intl.DateTimeFormat(LOCALE[lang],{weekday:"long",timeZone:"Europe/Berlin"}).format(new Date(Date.now() + k*864e5));
-  el.classList.add("closed"); $("statusTx").textContent = tr("closedNow",{d});
+  el.classList.add("closed"); $("statusTx").textContent = tr("closedNow",{d, o: oh ? hm(oh[0]) : ""});
 }
 setInterval(renderStatus, 60000);
 
@@ -894,7 +933,7 @@ function spy(){
 }
 addEventListener("scroll", spy, {passive:true});
 $("ctaMenu").onclick = () => $("bar").scrollIntoView();
-$("readyOk").onclick = () => { IH.close($("readyOv")); clearInterval(readyRepeat); document.title = "Imbiss Hirsch"; };
+$("readyOk").onclick = () => { IH.close($("readyOv")); clearInterval(readyRepeat); document.title = BR.name || "Imbiss Hirsch"; };
 
 let installEvt = null;
 const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
@@ -920,8 +959,10 @@ addEventListener("hashchange", () => route(true));
 (async function start(){
   lang = detectLang();
   const hh = location.hash.replace("#","").toLowerCase(); if (LANGS.includes(hh)) lang = hh;
-  IH.splash("../assets/logo.jpg", "Tantuni & Burger");
+  IH.splash(BR.logo_url || "../assets/logo.jpg", pick(BR.tagline) || BR.name);
+  applyBrand();
   renderChrome();
+  if (sb) IH.brand(sb).then(b => { if (b){ BR = b; HOURS = b.hours || {}; applyBrand(); renderChrome(); renderMenu(false); } });
   $("menu").innerHTML = `<div class="skeleton skel h"></div>` + Array.from({length:5}, () => `<div class="skeleton skel"></div>`).join("");
   const loaded = Promise.all([loadMenu(), loadSettings()]);
   const quick = await Promise.race([loaded.then(() => true), new Promise(r => setTimeout(() => r(false), 4000))]);
@@ -929,15 +970,15 @@ addEventListener("hashchange", () => route(true));
   else route(true);
   // live menu: sold-out switches and prices update without reload
   if (sb && online){
-    sb.channel("menu").on("postgres_changes", {event:"*", schema:"public", table:"menu_items"}, async () => { await loadMenu(); route(false); })
-      .on("postgres_changes", {event:"*", schema:"public", table:"settings"}, p => { if (p.new && p.new.key === "delivery_enabled") applyDelivery(p.new.value !== false); })
+    sb.channel("menu").on("postgres_changes", {event:"*", schema:"public", table:"menu_items", filter:`client_id=eq.${CID}`}, async () => { await loadMenu(); route(false); })
+      .on("postgres_changes", {event:"*", schema:"public", table:"settings", filter:`client_id=eq.${CID}`}, p => { if (p.new && p.new.key === "delivery_enabled") applyDelivery(p.new.value !== false); })
       .subscribe();
     setInterval(loadSettings, 60000);
   }
   await checkOnlinePay();
   const back = params.get("bezahlt") || params.get("abbruch");
   if (back){
-    const clean = location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "") + location.hash;
+    const clean = withL(location.pathname + (tableNo ? `?tisch=${encodeURIComponent(tableNo)}` : "")) + location.hash;
     try{ history.replaceState(null, "", clean); }catch(e){}
   }
   try{

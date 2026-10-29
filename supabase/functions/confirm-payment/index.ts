@@ -1,3 +1,4 @@
+/* GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati */
 // The guest returns from Stripe -> ask Stripe directly whether the order is paid.
 // Works without a webhook; the webhook (stripe-webhook) stays as a safety net
 // for guests who close the browser right after paying.

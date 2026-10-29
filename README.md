@@ -82,4 +82,14 @@ Preise und Gerichte werden **nicht** im Code geändert, sondern im Dashboard →
 `plattform/` zeigt dir als Betreiber pro Kunde (Restaurant): Bestellungen und Umsatz über die Plattform, dein Verdienst (Grundgebühr + % auf Online-Zahlungen + € pro Bestellung + Einrichtung), Monatsverlauf, offene Beträge, „Segna pagato“, CSV-Export.
 Zugang nur für Konten in `platform_admins` (keine Registrierung). Du siehst nur Summen, keine Daten der Gäste.
 Vertragsdaten pro Kunde im Dialog des Kunden. Abrechnungsregel: Grundgebühr und Provision ab dem Monat nach Ende der Testphase, nur im Status „Attivo“; Einrichtung im Startmonat.
-Weitere Restaurants: Kunde anlegen; für eigene Apps pro Restaurant ist noch der Schritt „mehrere Betriebe“ nötig (`orders.client_id` ist schon vorbereitet).
+## Mehrere Restaurants (GallopaySystem)
+
+Eine Installation, beliebig viele Betriebe. Jeder Betrieb hat dieselben Apps mit eigenem Logo, eigenen Daten und eigener Speisekarte.
+- Gäste-Apps: `kunde/?l=<code>` und `abholung/?l=<code>` (ohne `l` = Imbiss Hirsch, alte QR-Codes funktionieren weiter).
+- Personal-Apps (Kasse, Küche, Fahrer, Dashboard): der Betrieb ergibt sich aus dem Login. Der Plattform-Admin kann mit `?l=<code>` jeden Betrieb öffnen.
+- Neuer Kunde: Plattform → „+ Nuovo cliente“ → 1 Locale (Logo, Titelbild, Adresse, Telefon, Slogan, Öffnungszeiten, Google-Link) → 2 Menù (Flyer-Foto hochladen → Karte wird automatisch gelesen und in 5 Sprachen übersetzt) → 3 Contratto → 4 App e accesso (Links, QR, Inhaber freischalten).
+- Logos liegen im Storage-Bucket `brand`; aus dem Logo wird automatisch ein quadratisches App-Icon erzeugt.
+- Flyer-Import: Edge Function `menu-from-flyer`, braucht das Secret `ANTHROPIC_API_KEY` (Supabase → Edge Functions → Secrets).
+- **Pflicht vor dem zweiten echten Kunden:** `supabase/migrations/multi_tenant_part2.sql` einmal im SQL Editor ausführen (trennt die Daten der Betriebe auch auf Datenbank-Ebene).
+
+Der Name GallopaySystem erscheint nur in der Plattform-App des Betreibers und als Eigentumsvermerk im Code, nicht in den Apps der Kunden.

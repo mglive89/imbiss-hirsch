@@ -1,7 +1,9 @@
 <!doctype html>
+<!-- GallopaySystem · © 2026 Marco Gallo · Software proprietario, tutti i diritti riservati -->
 <html lang="de" class="shell">
 <head>
 <meta charset="utf-8">
+<meta name="generator" content="GallopaySystem">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Imbiss Fahrer</title>
 <meta name="theme-color" content="#0d0c0b">
@@ -62,7 +64,7 @@
 
 <div id="app" hidden>
   <header class="appbar">
-    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Fahrer</b></a>
+    <a class="brand" href="./"><img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch"><b>Fahrer</b></a>
     <span class="sp"></span>
     <span class="conn" id="conn" title="Live-Verbindung"></span>
     <button class="iconbtn" id="soundBtn" type="button" aria-pressed="false" aria-label="Ton an/aus" title="Ton an/aus"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
@@ -80,7 +82,7 @@
 
 <div class="starter" id="starter" hidden>
   <div>
-    <img src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
+    <img data-brand-logo src="../assets/logo.jpg" width="846" height="490" alt="Imbiss Hirsch">
     <p class="appname">Fahrer</p>
     <p>Antippen: Ton an, wenn eine Lieferung fertig ist. Bildschirm bleibt an.</p>
     <button class="btn big primary" type="button" id="startBtn">Schicht starten</button>
@@ -93,14 +95,14 @@
 <script src="../shared/staff.js"></script>
 <script>
 const { $, esc, eur, hhmm, minsAgo } = IH;
-const SHOP = "Ringstraße 27, 74321 Bietigheim-Bissingen";
+let SHOP = "Ringstraße 27, 74321 Bietigheim-Bissingen", CID = IH.CID;
 const MAPS_ICON = `<svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>`;
 let sb, me, orders = [], tab = "bereit", first = true;
 const seen = new Set();
 
-IH.splash("../assets/logo.jpg", "Fahrer");
+IH.splash((IH.brandCached(IH.store.get("ih-last-client") || IH.CID) || IH.BRAND_DEFAULT).logo_url || "../assets/logo.jpg", "Fahrer");
 IH.staffGate({ app: "Fahrer", onReady: async (ctx) => {
-  ({ sb, me } = ctx);
+  ({ sb, me } = ctx); CID = ctx.client; if (ctx.brand && ctx.brand.address) SHOP = ctx.brand.address.replace(/\s*·\s*/g, ", ");
   if (!IH.sound.on) $("starter").hidden = false;
   await load(); subscribe(); render();
 }});
@@ -109,7 +111,7 @@ IH.staffGate({ app: "Fahrer", onReady: async (ctx) => {
 async function load(){
   const [from] = IH.dayRange(IH.berlinToday());
   const { data, error } = await sb.from("orders").select("*, order_items(name_de,qty,note)")
-    .eq("channel", "lieferung").neq("payment", "offen")
+    .eq("client_id", CID).eq("channel", "lieferung").neq("payment", "offen")
     .or(`status.in.(fertig,unterwegs),and(status.eq.abgeschlossen,created_at.gte.${from})`)
     .order("updated_at", { ascending: true }).limit(200);
   $("conn").classList.toggle("off", !!error);
@@ -125,7 +127,7 @@ async function load(){
 }
 let reloadT;
 function subscribe(){
-  sb.channel("fahrer").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
+  sb.channel("fahrer").on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `client_id=eq.${CID}` }, () => { clearTimeout(reloadT); reloadT = setTimeout(load, 300); })
     .subscribe(st => $("conn").classList.toggle("off", st !== "SUBSCRIBED"));
   setInterval(load, 20000);
   setInterval(() => render(), 30000);
