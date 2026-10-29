@@ -45,5 +45,4 @@ create policy "staff manage" on public.staff for all to authenticated
 create policy "settings public" on public.settings for select to anon, authenticated using (true);
 create policy "settings edit" on public.settings for all to authenticated using ((select public.can_access(client_id))) with check ((select public.can_access(client_id)));
 create policy "feedback read" on public.feedback for select to authenticated using ((select public.can_access(client_id)));
-create policy "brand delete by platform" on storage.objects for delete to authenticated using (bucket_id = 'brand' and (select public.is_platform_admin()));
 commit;
