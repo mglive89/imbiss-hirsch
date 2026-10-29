@@ -11,6 +11,7 @@ Fünf Web-Apps (PWA) auf einer gemeinsamen Datenbank (Supabase). Jede App lässt
 | **Küche** | `kueche/` | Tablet oder TV in der Küche | Personal |
 | **Abholung** | `abholung/` | TV im Gastraum | – |
 | **Fahrer** | `fahrer/` | Handy der Lieferfahrer | Personal |
+| **Plattform** | `plattform/` | nur du (Betreiber) | Plattform-Admin |
 
 Live: `https://mglive89.github.io/imbiss-hirsch/` (Startseite leitet zur Kunden-App weiter).
 
@@ -75,3 +76,10 @@ Kein Build-Schritt: statische Dateien, direkt auf GitHub Pages oder jedem HTTPS-
 
 Nach Änderungen an Dateien `VERSION` in `sw.js` hochzählen, damit installierte Apps neu laden.
 Preise und Gerichte werden **nicht** im Code geändert, sondern im Dashboard → Speisekarte.
+
+## Plattform (Betreiber)
+
+`plattform/` zeigt dir als Betreiber pro Kunde (Restaurant): Bestellungen und Umsatz über die Plattform, dein Verdienst (Grundgebühr + % auf Online-Zahlungen + € pro Bestellung + Einrichtung), Monatsverlauf, offene Beträge, „Segna pagato“, CSV-Export.
+Zugang nur für Konten in `platform_admins` (keine Registrierung). Du siehst nur Summen, keine Daten der Gäste.
+Vertragsdaten pro Kunde im Dialog des Kunden. Abrechnungsregel: Grundgebühr und Provision ab dem Monat nach Ende der Testphase, nur im Status „Attivo“; Einrichtung im Startmonat.
+Weitere Restaurants: Kunde anlegen; für eigene Apps pro Restaurant ist noch der Schritt „mehrere Betriebe“ nötig (`orders.client_id` ist schon vorbereitet).

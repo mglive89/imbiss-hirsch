@@ -326,3 +326,8 @@ end $$;
 revoke execute on function public.stamp_delivery() from public, anon, authenticated;
 create trigger t_orders_delivery_stamp before update on public.orders for each row execute function public.stamp_delivery();
 -- order_status liefert zusätzlich eta_at, eta_minutes, out_at, delivered_at
+
+-- ---------- Plattform (Betreiber-Dashboard) ----------
+-- Tabellen platform_admins, clients, client_payments; orders.client_id (Standard 'hirsch');
+-- Funktionen is_platform_admin(), platform_overview(p_months) – nur Summen pro Kunde und Monat, keine Gästedaten.
+-- Vollständige Definition: Migration "platform_owner_dashboard".

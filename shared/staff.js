@@ -7,7 +7,9 @@
   "use strict";
   const { $, esc } = IH;
 
-  IH.staffGate = function ({ app, logo = "../assets/logo.jpg", onReady, allowSignup = true }) {
+  // role: "staff" (restaurant team) or "platform" (owner of the platform – no sign-up, no auto-admin)
+  IH.staffGate = function ({ app, logo = "../assets/logo.jpg", onReady, allowSignup = true, role = "staff" }) {
+    if (role === "platform") allowSignup = false;
     const sb = IH.client();
     IH.sb = sb;
     const gate = document.createElement("div");
@@ -44,6 +46,13 @@
       const { data: { session } } = await sb.auth.getSession();
       const me = session?.user;
       if (!me) return show("login");
+      if (role === "platform"){
+        const { data: ok } = await sb.rpc("is_platform_admin");
+        if (!ok){ await sb.auth.signOut(); show("login"); err("Dieses Konto hat keinen Zugang zur Plattform."); return; }
+        show("app");
+        document.querySelectorAll("[data-who]").forEach((el) => (el.textContent = me.email));
+        return onReady({ sb, me, staff: null });
+      }
       let r = await sb.from("staff").select("*").eq("user_id", me.id).maybeSingle();
       if (!r.data) {
         const c = await sb.rpc("claim_first_admin");

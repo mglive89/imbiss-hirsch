@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="it" class="shell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Imbiss Plattform</title>
+<meta name="theme-color" content="#0d0c0b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="../assets/icons/plattform-64.png">
+<link rel="apple-touch-icon" href="../assets/icons/plattform-apple.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Plattform">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ultra&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ih.css">
+<style>
+/* Owner view of the platform: money first (your earnings), then the clients that produce it. Gold accent = your money. */
+:root{--app:#e0bd8f;--gold:#e0bd8f;--fee:#c9a274;--prov:#7fbf5f;--setup:#7fa8d9}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.top h2{margin:0}
+.top .sp{flex:1}
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav b{font-family:var(--label);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em;min-width:9.5em;text-align:center}
+.hero{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:980px){.hero{grid-template-columns:1fr 1fr}.kpi.main{grid-column:1/-1}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden;min-width:0}
+.kpi .k{font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.kpi .v{font-family:var(--label);font-weight:700;font-size:clamp(26px,5.5vw,36px);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px}
+.kpi .s{color:var(--faint);font-size:13px;margin-top:4px}
+.kpi.main{background:linear-gradient(135deg,rgba(224,189,143,.16),rgba(224,189,143,.03)),var(--surface);border-color:#5c4a33}
+.kpi.main .v{font-size:clamp(34px,8vw,52px);color:var(--gold)}
+.kpi.main::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(224,189,143,.18),transparent 70%)}
+.kpi .split{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--muted)}
+.kpi .split i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:0}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;margin-bottom:16px}
+.box h3{font-family:var(--label);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.box h3 small{font-family:var(--body);font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint);font-size:13px;margin-left:auto}
+.chart{display:grid;gap:8px;align-items:end;height:200px;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to top,transparent 0 49px,rgba(255,255,255,.04) 49px 50px)}
+.chart .c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0;cursor:pointer}
+.chart .c em{font-style:normal;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.chart .stack{width:100%;max-width:44px;display:flex;flex-direction:column-reverse;border-radius:6px 6px 2px 2px;overflow:hidden;transform-origin:bottom}
+.chart .stack i{display:block;width:100%}
+.chart .c.sel .stack{outline:2px solid var(--gold);outline-offset:2px}
+.grow .chart .stack{animation:growY .8s var(--ease) both;animation-delay:calc(var(--i) * 45ms)}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.axis{display:grid;gap:8px;margin-top:6px}
+.axis span{font-size:11px;color:var(--faint);text-align:center}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tblwrap{overflow-x:auto}
+.tbl th{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:right;padding:6px 10px;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{padding:12px 10px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle}
+.tbl tr.row{cursor:pointer;transition:background-color .2s}
+.tbl tr.row:hover{background:rgba(255,255,255,.025)}
+.cname b{font-family:var(--label);font-weight:700;font-size:18px;text-transform:uppercase;display:block;white-space:normal}
+.cname span{color:var(--faint);font-size:13px}
+.earn{color:var(--gold);font-weight:600;font-size:17px}
+.earn small{display:block;color:var(--faint);font-size:12px;font-weight:400}
+.trend{font-size:12px;margin-left:6px}
+.trend.up{color:var(--ok)} .trend.down{color:var(--bad)}
+.pill.test{color:var(--info);border-color:#35506e}
+.pill.aktiv{color:var(--ok);border-color:#3e5f2f}
+.pill.pausiert{color:var(--warn);border-color:#6b5524}
+.pill.gekuendigt{color:var(--bad);border-color:#5a2f22}
+.paid{color:var(--ok);font-size:13px}
+.due{color:var(--warn);font-size:13px}
+.tbl tfoot td{font-family:var(--label);font-weight:700;font-size:17px;border-top:2px solid var(--line)}
+.dialog .grid{display:grid;gap:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:520px){.g2,.g3{grid-template-columns:1fr}}
+.dialog .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.dialog .actions .sp{flex:1}
+.check{display:flex;align-items:center;gap:8px;font-size:15px}
+.hint2{background:rgba(127,168,217,.08);border:1px solid #35506e;border-radius:10px;padding:10px 12px;font-size:14px;color:var(--muted)}
+.empty{margin-top:4px}
+</style>
+</head>
+<body>
+
+<div id="app" hidden>
+  <header class="appbar">
+    <a class="brand" href="./"><img src="../assets/logo.jpg" width="846" height="490" alt=""><b>Plattform</b></a>
+    <span class="sp"></span>
+    <span class="who" data-who></span>
+    <button class="btn ghost" type="button" data-logout>Esci</button>
+  </header>
+  <main class="content"><div class="inner" id="view"></div></main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="dialog" id="dialog" role="dialog" aria-modal="true" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/config.js"></script>
+<script src="../shared/ih.js"></script>
+<script src="../shared/staff.js"></script>
+<script>
+const { $, esc } = IH;
+const eur = v => IH.eur(v, "de-DE");   // 4.200,00 € – grouping also for 4-digit amounts
+const STATUS = { test: "Prova", aktiv: "Attivo", pausiert: "In pausa", gekuendigt: "Disdetto" };
+const MESI = ["gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"];
+let sb, clients = [], stats = [], pays = [];
+let ym = IH.berlinToday().slice(0, 7);
+const nowYM = IH.berlinToday().slice(0, 7);
+const prevKpi = {};
+
+IH.splash("../assets/logo.jpg", "Plattform");
+IH.staffGate({ app: "Plattform", role: "platform", onReady: async (ctx) => { sb = ctx.sb; await load(true); live(); } });
+
+/* ---------- data ---------- */
+async function load(animate){
+  const [c, s, p] = await Promise.all([
+    sb.from("clients").select("*").order("created_at"),
+    sb.rpc("platform_overview", { p_months: 13 }),
+    sb.from("client_payments").select("*").order("month", { ascending: false }).limit(1000),
+  ]);
+  if (c.error || s.error || p.error){ $("view").innerHTML = `<div class="empty">Dati non disponibili: ${esc((c.error || s.error || p.error).message)}</div>`; return; }
+  clients = c.data; stats = s.data || []; pays = p.data;
+  render(animate);
+}
+let liveT;
+function live(){
+  sb.channel("plattform").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { clearTimeout(liveT); liveT = setTimeout(() => load(false), 2000); }).subscribe();
+  setInterval(() => load(false), 120000);
+}
+
+/* ---------- money ---------- */
+const months = (n, end = nowYM) => { const [y, m] = end.split("-").map(Number); return Array.from({ length: n }, (_, k) => { const d = new Date(Date.UTC(y, m - 1 - (n - 1 - k), 1)); return d.toISOString().slice(0, 7); }); };
+const shiftYM = (v, d) => { const [y, m] = v.split("-").map(Number); return new Date(Date.UTC(y, m - 1 + d, 1)).toISOString().slice(0, 7); };
+const ymLabel = v => { const [y, m] = v.split("-").map(Number); return `${MESI[m - 1]} ${y}`; };
+const agg = (cid, m) => stats.find(x => x.client_id === cid && x.month === m) || { orders: 0, revenue: 0, online: 0, cash: 0, card: 0, open: 0, deliveries: 0, tables: 0, cancelled: 0 };
+// what you earn from one client in one month
+function earn(c, m){
+  const a = agg(c.id, m), start = c.started_at.slice(0, 7), trial = c.trial_until ? c.trial_until.slice(0, 7) : null;
+  if (m < start) return { fee: 0, prov: 0, setup: 0, total: 0, a };
+  const billable = c.status === "aktiv" && (!trial || m > trial);
+  const fee = billable ? +c.monthly_fee : 0;
+  const prov = billable ? (+c.pct_online / 100) * +a.online + (+c.fee_per_order) * +a.orders : 0;
+  const setup = m === start ? +c.setup_fee : 0;
+  return { fee, prov, setup, total: fee + prov + setup, a };
+}
+const paidFor = (cid, m) => pays.filter(p => p.client_id === cid && p.month.slice(0, 7) === m).reduce((s, p) => s + +p.amount, 0);
+// still to collect for a month: fee + commission (+ setup in the start month, unless marked paid) minus what you recorded
+function due(c, m){ const e = earn(c, m); return Math.max(0, e.fee + e.prov + (e.setup && !c.setup_paid ? e.setup : 0) - paidFor(c.id, m)); }
+
+/* ---------- render ---------- */
+function render(animate){
+  const sel = months(12, nowYM);
+  const perMonth = sel.map(m => clients.reduce((t, c) => { const e = earn(c, m); t.fee += e.fee; t.prov += e.prov; t.setup += e.setup; t.total += e.total; return t; }, { m, fee: 0, prov: 0, setup: 0, total: 0 }));
+  const cur = clients.reduce((t, c) => { const e = earn(c, ym); t.fee += e.fee; t.prov += e.prov; t.setup += e.setup; t.total += e.total; t.rev += +e.a.revenue; t.orders += +e.a.orders; return t; }, { fee: 0, prov: 0, setup: 0, total: 0, rev: 0, orders: 0 });
+  const mrr = clients.filter(c => c.status === "aktiv").reduce((s, c) => s + +c.monthly_fee, 0);
+  const year = ym.slice(0, 4);
+  const ytd = months(13, ym).filter(m => m.startsWith(year)).reduce((s, m) => s + clients.reduce((t, c) => t + earn(c, m).total, 0), 0);
+  const open = clients.reduce((s, c) => s + months(13, nowYM).filter(m => m <= nowYM).reduce((t, m) => t + due(c, m), 0), 0);
+  const active = clients.filter(c => c.status === "aktiv").length, trial = clients.filter(c => c.status === "test").length;
+  const maxM = Math.max(1, ...perMonth.map(x => x.total));
+  const prevYM = shiftYM(ym, -1);
+  const rows = clients.map(c => {
+    const e = earn(c, ym), a = e.a, pa = agg(c.id, prevYM);
+    const tr = +pa.revenue ? Math.round((a.revenue - pa.revenue) / pa.revenue * 100) : null;
+    const d = due(c, ym), paid = paidFor(c.id, ym);
+    const payCell = (e.fee + e.prov) === 0 ? `<span class="muted">—</span>` : d <= 0.005 ? `<span class="paid">✓ Pagato</span>` : `<span class="due">${eur(d)} da incassare</span> <button class="btn" type="button" data-pay="${esc(c.id)}" style="padding:4px 10px;font-size:13px;margin-left:6px">Segna pagato</button>`;
+    return `<tr class="row" data-open="${esc(c.id)}">
+      <td class="cname"><b>${esc(c.name)}</b><span>${esc(c.city || "")} · <span class="pill ${c.status}">${STATUS[c.status]}</span></span></td>
+      <td>${a.orders}</td>
+      <td>${eur(a.revenue)}${tr === null ? "" : `<span class="trend ${tr >= 0 ? "up" : "down"}">${tr >= 0 ? "▲" : "▼"}${Math.abs(tr)}%</span>`}</td>
+      <td>${eur(a.online)}</td>
+      <td class="earn">${eur(e.total)}<small>${[e.fee ? "canone " + eur(e.fee) : "", e.prov ? "provv. " + eur(e.prov) : "", e.setup ? "setup " + eur(e.setup) : ""].filter(Boolean).join(" · ") || (c.status === "test" ? "in prova" : "")}</small></td>
+      <td>${payCell}</td></tr>`;
+  }).join("");
+  $("view").innerHTML = `
+  <div class="top"><h2 class="view" style="margin:0">La mia piattaforma</h2><span class="sp"></span>
+    <div class="monthnav"><button class="iconbtn" id="mPrev" type="button" aria-label="Mese precedente"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><b>${ymLabel(ym)}</b><button class="iconbtn" id="mNext" type="button" aria-label="Mese successivo" ${ym >= nowYM ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    <button class="btn" id="csv" type="button">Esporta CSV</button>
+    <button class="btn primary" id="newC" type="button">+ Nuovo cliente</button></div>
+  <div class="hero">
+    <div class="kpi main"><div class="k">Il tuo guadagno · ${ymLabel(ym)}</div><div class="v" id="k-earn">${eur(cur.total)}</div>
+      <div class="split"><span><i style="background:var(--fee)"></i>Canoni ${eur(cur.fee)}</span><span><i style="background:var(--prov)"></i>Provvigioni ${eur(cur.prov)}</span><span><i style="background:var(--setup)"></i>Setup ${eur(cur.setup)}</span></div></div>
+    <div class="kpi"><div class="k">Entrate fisse / mese</div><div class="v" id="k-mrr">${eur(mrr)}</div><div class="s">${active} attivi · ${trial} in prova</div></div>
+    <div class="kpi"><div class="k">Guadagno ${year}</div><div class="v" id="k-ytd">${eur(ytd)}</div><div class="s">fino a ${ymLabel(ym)}</div></div>
+    <div class="kpi"><div class="k">Da incassare</div><div class="v" id="k-open" style="color:${open > 0.005 ? "var(--warn)" : "var(--ok)"}">${eur(open)}</div><div class="s">canoni e provvigioni non segnati</div></div>
+  </div>
+  <div class="box${animate ? " grow" : ""}"><h3>Guadagno ultimi 12 mesi<small>clic su un mese per i dettagli</small></h3>
+    <div class="chart" style="grid-template-columns:repeat(12,1fr)">${perMonth.map((x, k) => `<div class="c${x.m === ym ? " sel" : ""}" data-m="${x.m}" style="--i:${k}"><em>${x.total ? Math.round(x.total) + " €" : ""}</em><div class="stack" style="height:${x.total / maxM * 84}%">${[["fee","var(--fee)"],["prov","var(--prov)"],["setup","var(--setup)"]].map(([k2, col]) => x[k2] ? `<i style="height:${x[k2] / x.total * 100}%;background:${col}"></i>` : "").join("")}</div></div>`).join("")}</div>
+    <div class="axis" style="grid-template-columns:repeat(12,1fr)">${perMonth.map(x => `<span>${MESI[+x.m.slice(5) - 1]}</span>`).join("")}</div>
+    <div class="legend"><span><i style="background:var(--fee)"></i>Canoni</span><span><i style="background:var(--prov)"></i>Provvigioni</span><span><i style="background:var(--setup)"></i>Setup</span></div></div>
+  <div class="box"><h3>Clienti · ${ymLabel(ym)}<small>fatturato passato dalla tua piattaforma</small></h3>
+    <div class="tblwrap"><table class="tbl"><thead><tr><th>Cliente</th><th>Ordini</th><th>Fatturato</th><th>di cui online</th><th>Tuo guadagno</th><th>Pagamento</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="6"><div class="empty">Nessun cliente.</div></td></tr>`}</tbody>
+    <tfoot><tr><td>Totale</td><td>${cur.orders}</td><td>${eur(cur.rev)}</td><td>${eur(clients.reduce((s, c) => s + +agg(c.id, ym).online, 0))}</td><td class="earn">${eur(cur.total)}</td><td></td></tr></tfoot></table></div></div>`;
+  IH.countUp($("k-earn"), cur.total, eur, animate ? 0 : prevKpi.earn);
+  IH.countUp($("k-mrr"), mrr, eur, animate ? 0 : prevKpi.mrr);
+  IH.countUp($("k-ytd"), ytd, eur, animate ? 0 : prevKpi.ytd);
+  IH.countUp($("k-open"), open, eur, animate ? 0 : prevKpi.open);
+  Object.assign(prevKpi, { earn: cur.total, mrr, ytd, open });
+  $("mPrev").onclick = () => { ym = shiftYM(ym, -1); if (ym < months(13)[0]) ym = months(13)[0]; render(false); };
+  $("mNext").onclick = () => { ym = shiftYM(ym, 1); if (ym > nowYM) ym = nowYM; render(false); };
+  $("view").querySelectorAll(".chart .c").forEach(el => el.onclick = () => { ym = el.dataset.m; render(false); });
+  $("view").querySelectorAll("[data-open]").forEach(tr => tr.onclick = (e) => { if (e.target.closest("[data-pay]")) return; editClient(clients.find(c => c.id === tr.dataset.open)); });
+  $("view").querySelectorAll("[data-pay]").forEach(b => b.onclick = () => markPaid(clients.find(c => c.id === b.dataset.pay), ym));
+  $("newC").onclick = () => editClient(null);
+  $("csv").onclick = exportCsv;
+}
+
+/* ---------- actions ---------- */
+async function markPaid(c, m){
+  const e = earn(c, m), amount = Math.round(due(c, m) * 100) / 100;
+  if (amount <= 0) return;
+  const { error } = await sb.from("client_payments").insert({ client_id: c.id, month: m + "-01", kind: e.prov ? "provisione" : "canone", amount, note: `${ymLabel(m)}: canone ${eur(e.fee)} + provv. ${eur(e.prov)}` });
+  if (error) return IH.toast(error.message, "err");
+  IH.sound.paid(); IH.toast(`${c.name}: ${eur(amount)} incassati`);
+  await load(false);
+}
+function openDialog(html){ $("dialog").innerHTML = html; IH.open($("dialog"), $("scrim")); }
+function closeDialog(){ IH.close($("dialog"), $("scrim"), () => $("dialog").innerHTML = ""); }
+$("scrim").onclick = closeDialog;
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("dialog").hidden) closeDialog(); });
+
+function editClient(c){
+  const isNew = !c;
+  c = c || { id: "", name: "", city: "", contact: "", status: "test", monthly_fee: 59, setup_fee: 990, setup_paid: false, pct_online: 0, fee_per_order: 0, started_at: IH.berlinToday(), trial_until: IH.addDays(IH.berlinToday(), 30), notes: "" };
+  const hist = isNew ? "" : months(12).slice().reverse().filter(m => m >= c.started_at.slice(0, 7)).map(m => { const e = earn(c, m); return `<tr><td>${ymLabel(m)}</td><td>${e.a.orders}</td><td>${eur(e.a.revenue)}</td><td>${eur(e.a.online)}</td><td class="earn" style="font-size:15px">${eur(e.total)}</td><td>${paidFor(c.id, m) ? `<span class="paid">${eur(paidFor(c.id, m))}</span>` : "—"}</td></tr>`; }).join("");
+  openDialog(`<h3>${isNew ? "Nuovo cliente" : esc(c.name)}<button class="x" type="button" id="dX" aria-label="Chiudi">×</button></h3>
+    <div class="grid">
+      <div class="g2"><div class="field"><label for="cName">Nome attività</label><input id="cName" type="text" value="${esc(c.name)}"></div>
+        <div class="field"><label for="cCity">Città</label><input id="cCity" type="text" value="${esc(c.city || "")}"></div></div>
+      <div class="g2"><div class="field"><label for="cContact">Contatto (nome, telefono)</label><input id="cContact" type="text" value="${esc(c.contact || "")}"></div>
+        <div class="field"><label for="cStatus">Stato</label><select id="cStatus">${Object.entries(STATUS).map(([k, l]) => `<option value="${k}" ${c.status === k ? "selected" : ""}>${l}</option>`).join("")}</select></div></div>
+      <span class="lbl">Contratto · il tuo guadagno</span>
+      <div class="g3"><div class="field"><label for="cFee">Canone €/mese</label><input id="cFee" type="number" step="1" min="0" value="${+c.monthly_fee}"></div>
+        <div class="field"><label for="cPct">% sugli ordini online</label><input id="cPct" type="number" step="0.1" min="0" max="30" value="${+c.pct_online}"></div>
+        <div class="field"><label for="cPer">€ per ordine</label><input id="cPer" type="number" step="0.05" min="0" value="${+c.fee_per_order}"></div></div>
+      <div class="g3"><div class="field"><label for="cSetup">Setup € (una tantum)</label><input id="cSetup" type="number" step="10" min="0" value="${+c.setup_fee}"></div>
+        <div class="field"><label for="cStart">Inizio</label><input id="cStart" type="date" value="${c.started_at}"></div>
+        <div class="field"><label for="cTrial">Prova gratuita fino al</label><input id="cTrial" type="date" value="${c.trial_until || ""}"></div></div>
+      <label class="check"><input type="checkbox" id="cSetupPaid" ${c.setup_paid ? "checked" : ""}> Setup già pagato</label>
+      <div class="field"><label for="cNotes">Note</label><textarea id="cNotes" rows="2">${esc(c.notes || "")}</textarea></div>
+      ${isNew ? `<div class="hint2">Il cliente compare subito qui. Per dargli le sue app (menù, cassa, cucina…) serve ancora il passaggio “più locali”: dimmelo quando hai firmato con il secondo cliente.</div>` : ""}
+      ${hist ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Mese</th><th>Ordini</th><th>Fatturato</th><th>Online</th><th>Guadagno</th><th>Incassato</th></tr></thead><tbody>${hist}</tbody></table></div>` : ""}
+      <p class="err" id="cErr" hidden></p>
+    </div>
+    <div class="actions"><span class="sp"></span><button class="btn" type="button" id="cCancel">Annulla</button><button class="btn primary" type="button" id="cSave">Salva</button></div>`);
+  $("dX").onclick = closeDialog; $("cCancel").onclick = closeDialog;
+  $("cSave").onclick = async () => {
+    const name = $("cName").value.trim();
+    if (!name){ $("cErr").textContent = "Inserisci il nome dell'attività."; $("cErr").hidden = false; return; }
+    const row = { name, city: $("cCity").value.trim() || null, contact: $("cContact").value.trim() || null, status: $("cStatus").value,
+      monthly_fee: +$("cFee").value || 0, pct_online: +$("cPct").value || 0, fee_per_order: +$("cPer").value || 0, setup_fee: +$("cSetup").value || 0,
+      started_at: $("cStart").value || IH.berlinToday(), trial_until: $("cTrial").value || null, setup_paid: $("cSetupPaid").checked, notes: $("cNotes").value.trim() || null };
+    if (isNew) row.id = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "cliente-" + Date.now();
+    const { error } = isNew ? await sb.from("clients").insert(row) : await sb.from("clients").update(row).eq("id", c.id);
+    if (error){ $("cErr").textContent = error.message; $("cErr").hidden = false; return; }
+    closeDialog(); IH.toast(isNew ? "Cliente aggiunto" : "Salvato"); await load(false);
+  };
+}
+function exportCsv(){
+  const head = ["Cliente","Stato","Mese","Ordini","Fatturato","Online","Contanti","Carta","Consegne","Canone","Provvigioni","Setup","Guadagno totale","Incassato"];
+  const lines = [head.join(";")].concat(clients.map(c => { const e = earn(c, ym), a = e.a; return [c.name, STATUS[c.status], ym, a.orders, a.revenue, a.online, a.cash, a.card, a.deliveries, e.fee, e.prov, e.setup, e.total, paidFor(c.id, ym)].map(v => typeof v === "number" ? String(Math.round(v * 100) / 100).replace(".", ",") : `"${String(v).replace(/"/g, '""')}"`).join(";"); }));
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `piattaforma-${ym}.csv`; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  IH.toast("CSV esportato");
+}
+IH.registerSW("../sw.js");
+</script>
+</body>
+</html>
