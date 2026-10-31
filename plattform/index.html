@@ -580,7 +580,7 @@ async function paintMenuTab(){
   B.innerHTML = `<div class="grid">
     <p class="muted" style="margin:0" id="mCount">Menù attuale: …</p>
     <div class="field"><span class="lbl">Importa dal volantino</span>
-      <label class="drop" id="dFly"><span>Foto del volantino / menù con i prezzi<br><b>fino a 4 immagini</b> (fronte e retro)</span><input type="file" accept="image/*" multiple id="flyIn"></label></div>
+      <label class="drop" id="dFly"><span>Foto del volantino / menù con i prezzi<br><b>fino a 4 immagini</b> (fronte e retro) · oppure file menù <b>.json</b></span><input type="file" accept="image/*,.json,application/json" multiple id="flyIn"></label></div>
     <div id="flyOut"></div>
     <div class="hint2">In alternativa: inserisci o correggi i piatti a mano nella Dashboard del cliente → Speisekarte (puoi creare anche le categorie).</div></div>
     <div class="actions"><a class="btn" href="${esc(appUrl("dashboard", c.id))}#karte" target="_blank" rel="noopener">Apri menù nella Dashboard ↗</a><span class="sp"></span><button class="btn primary" type="button" id="toApp">Avanti: app e accesso →</button></div>`;
@@ -596,6 +596,15 @@ async function paintMenuTab(){
   if (ed.flyer) paintFlyer();
 }
 async function readFlyer(files){
+  // ready-made menu file (e.g. prepared by Claude): straight to the preview, no AI needed
+  const js = files.find(f => /\.json$/i.test(f.name) || f.type === "application/json");
+  if (js){
+    try {
+      const m = JSON.parse(await js.text());
+      if (!Array.isArray(m.categories) || !m.categories.length) throw new Error("nessuna categoria");
+      ed.flyer = m; ed.flyerCut = false; return paintFlyer();
+    } catch (e) { return IH.toast("File menù non valido: " + e.message, "err"); }
+  }
   files = files.filter(f => /^image\//.test(f.type)).slice(0, 4);
   if (!files.length) return IH.toast("Serve una foto (JPG/PNG). Un PDF: fai uno screenshot della pagina.", "err");
   const out = $("flyOut");
@@ -620,7 +629,7 @@ async function readFlyer(files){
 function paintFlyer(){
   const m = ed.flyer, cats = (m && m.categories) || [], n = cats.reduce((s, k) => s + k.items.length, 0);
   const price = it => [it.price_pickup, it.price_delivery].filter(v => v != null).map(v => eur(v)).join(" / ") || "—";
-  const extra = [m.tagline && "slogan", m.hours && Object.keys(m.hours).length && "orari", m.phone && "telefono", m.address && "indirizzo"].filter(Boolean);
+  const extra = [m.tagline && "slogan", m.subline && "sottotitolo", m.hours && Object.keys(m.hours).length && "orari", m.phone && "telefono", m.address && "indirizzo"].filter(Boolean);
   $("flyOut").innerHTML = `<div class="grid">
     <div class="ok2">Trovati <b>${n}</b> piatti in <b>${cats.length}</b> categorie, con traduzioni EN · IT · TR · FR.${ed.flyerCut ? " Il volantino è molto lungo: controlla che ci sia tutto." : ""} Controlla i prezzi prima di importare.</div>
     <div class="mprev">${cats.map(k => `<h4>${esc(k.names.de)}${k.is_drink ? " · bevande" : ""}</h4>${k.items.map(it => `<div><span>${esc(it.names.de)}${it.tag === "veg" ? " 🌱" : ""}</span><span>${price(it)}</span></div>`).join("")}`).join("")}</div>
@@ -658,6 +667,7 @@ async function importFlyer(){
   if ($("fExtra") && $("fExtra").checked){
     const p = {};
     if (m.tagline && !IH.pickL(c.tagline)) p.tagline = m.tagline;
+    if (m.subline && !IH.pickL(c.subline)) p.subline = m.subline;
     if (m.hours && Object.keys(m.hours).length && !Object.keys(c.hours || {}).length) p.hours = m.hours;
     if (m.phone && !c.phone) p.phone = m.phone;
     if (m.address && !c.address) p.address = m.address;
